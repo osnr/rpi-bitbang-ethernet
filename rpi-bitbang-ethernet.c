@@ -1,19 +1,17 @@
 /* no header files :-D */
 
 #define GPIO_BASE     0xFE200000
-#define GPIO_GPFSEL2  2
-#define GPIO_GPSET0   7
-#define GPIO_GPCLR0   10
+#define GPIO_SET0   7
+#define GPIO_CLR0   10
 
 static volatile unsigned int* GPIO = (unsigned int*) GPIO_BASE;
-// FIXME: hard-coded for pins in the 20s
 void gpio_set_as_output(int pin) {
-    GPIO[GPIO_GPFSEL2] &= ~(3 << (3 * pin));
-    GPIO[GPIO_GPFSEL2] |= 1 << (3 * pin);
+    GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
+    GPIO[pin/10] |= 1 << (3 * (pin % 10));
 }
 void gpio_set_value(int pin, int value) {
-    if (value) { GPIO[GPIO_GPSET0] = 1 << pin; }
-    else { GPIO[GPIO_GPCLR0] = 1 << pin; }
+    if (value) { GPIO[GPIO_SET0 + pin/32] = 1 << (pin % 32); }
+    else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
 }
 void wait(int n) {
     // 0x3F0000 = about 3 seconds?
@@ -69,25 +67,26 @@ void main(void) {
     const unsigned char dest_ip[] = {192, 168, 1, 6};
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
 
-    __asm__(
-            "ldr r0,=0xFE200000   \n"
-            "mov r1, #1           \n"
-            "lsl r1,#6            \n"  /* -> 001 000 000 */
-            "str r1,[r0,#0x10]    \n"
-            "mov r1,#1            \n"
-            "lsl r1,#10           \n"
+    /* __asm__( */
+    /*         "ldr r0,=0xFE200000   \n" */
+    /*         "mov r1, #1           \n" */
+    /*         "lsl r1,#6            \n"  /\* -> 001 000 000 *\/ */
+    /*         "str r1,[r0,#0x10]    \n" */
+    /*         "mov r1,#1            \n" */
+    /*         "lsl r1,#10           \n" */
 
-            "str r1,[r0,#0x2C]  \n"
-            : : : "r0","r1" );
+    /*         "str r1,[r0,#0x2C]  \n" */
+    /*         : : : "r0","r1" ); */
 
     char *payload = "Hello!\n";
     int payload_len = 7;
 
     unsigned char buf[1024];
     // Ethernet preamble
-    buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55; buf[7] = 0x55; buf[8] = 0xD5;
+    buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
+    buf[7] = 0xD5; // start frame delimiter
 
-    struct frame* frame = (struct frame*) &buf[9];
+    struct frame* frame = (struct frame*) &buf[8];
     for (int i = 0; i < payload_len; i++) { frame->payload[i] = payload[i]; }
 
     {
@@ -128,20 +127,49 @@ void main(void) {
         udphdr->ulen = sizeof(frame->udphdr) + payload_len;
         udphdr->sum = 0; // don't care
     }
+    unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
 
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
-
+    gpio_set_as_output(42);
+    gpio_set_value(42, 1);
+    
+    int v = 0;
     for (;;) {
-        sleep(0x3F0000);
+        gpio_set_value(GPIO_PIN_ETHERNET_TDp, v); v = !v;
+        /* wait(1000); // 1000 -> 1ms, 956Hz */
+        /* wait(100); // 100 -> 0.1093ms, 9.188KHz */
+        /* wait(1); // 1 -> 5us, 200KHz */
+
+        // see https://www.fpga4fun.com/10BASE-T3.html
 
         // FIXME: send buf contents
-        
+        /* for (unsigned char* addr = &buf[0]; addr != buf_end; addr++) { */
+        /*     for (int i = 0; i < 8; i++) { */
+        /*         int bit = (*addr >> i) & 1; */
+        /*         if (bit) { */
+        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 1); */
+        /*             // CLOCK */
+        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0); */
+        /*             // CLOCK */
+        /*         } else { */
+        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0); */
+        /*             // CLOCK */
+        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 1); */
+        /*             // CLOCK */
+        /*         } */
+        /*     } */
+        /* } */
+
+        // FIXME: TP_IDL (3 * CLOCK positive)
+
+        // FIXME: NLP
     }
+    
 }
 
 short ip_checksum(struct iphdr* iphdr) {
-    unsigned char* addr = (unsigned char*) iphdr;
+    unsigned short* addr = (unsigned short*) iphdr;
     int count = sizeof(*iphdr);
     // from https://tools.ietf.org/html/rfc1071
     /* Compute Internet Checksum for "count" bytes
@@ -151,7 +179,7 @@ short ip_checksum(struct iphdr* iphdr) {
 
     while( count > 1 )  {
         /*  This is the inner loop */
-        sum += * (unsigned short *) addr++;
+        sum += * addr++;
         count -= 2;
     }
 
