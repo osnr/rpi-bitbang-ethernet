@@ -1,6 +1,6 @@
 /* no header files :-D */
 
-#define GPIO_BASE     0xFE200000
+#define GPIO_BASE   0xFE200000
 #define GPIO_SET0   7
 #define GPIO_CLR0   10
 
@@ -67,17 +67,6 @@ void main(void) {
     const unsigned char dest_ip[] = {192, 168, 1, 6};
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
 
-    /* __asm__( */
-    /*         "ldr r0,=0xFE200000   \n" */
-    /*         "mov r1, #1           \n" */
-    /*         "lsl r1,#6            \n"  /\* -> 001 000 000 *\/ */
-    /*         "str r1,[r0,#0x10]    \n" */
-    /*         "mov r1,#1            \n" */
-    /*         "lsl r1,#10           \n" */
-
-    /*         "str r1,[r0,#0x2C]  \n" */
-    /*         : : : "r0","r1" ); */
-
     char *payload = "Hello!\n";
     int payload_len = 7;
 
@@ -129,12 +118,33 @@ void main(void) {
     }
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
 
+    gpio_set_as_output(42);
+    gpio_set_value(42, 1);
+
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
-    gpio_set_as_output(42);
+
     gpio_set_value(42, 1);
     
     int v = 0;
+    // 48 nops = 700 KHz
+    __asm__(
+            "mov r0, #1      \n"
+            "lsl r0, #20     \n"
+            "loop:           \n"
+            "  str r0, [%0]  \n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  str r0, [%1] \n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
+            "  b loop"
+            :: "r"(&GPIO[GPIO_SET0]), "r"(&GPIO[GPIO_CLR0]) : "r0"
+            );
     for (;;) {
         gpio_set_value(GPIO_PIN_ETHERNET_TDp, v); v = !v;
         /* wait(1000); // 1000 -> 1ms, 956Hz */
