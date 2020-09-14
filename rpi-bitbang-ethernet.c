@@ -4,7 +4,7 @@
 #define GPIO_SET0   7
 #define GPIO_CLR0   10
 
-static volatile unsigned int* GPIO = (unsigned int*) GPIO_BASE;
+static volatile unsigned int* GPIO = (volatile unsigned int*) GPIO_BASE;
 void gpio_set_as_output(int pin) {
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
     GPIO[pin/10] |= 1 << (3 * (pin % 10));
@@ -12,10 +12,6 @@ void gpio_set_as_output(int pin) {
 void gpio_set_value(int pin, int value) {
     if (value) { GPIO[GPIO_SET0 + pin/32] = 1 << (pin % 32); }
     else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
-}
-void wait(int n) {
-    // 0x3F0000 = about 3 seconds?
-    for (volatile int i = 0; i < n; i++) {}
 }
 
 #define GPIO_PIN_ETHERNET_TDp  20
@@ -59,6 +55,10 @@ struct frame {
 } __attribute__((packed));
 
 short ip_checksum(struct iphdr* iphdr);
+
+extern void wait(int n);
+extern void transmit(unsigned char* buf, unsigned char* buf_end);
+extern void normal_link_pulse(void);
 
 void main(void) {
     const unsigned char source_ip[] = {192, 168, 1, 44};
@@ -118,38 +118,42 @@ void main(void) {
     }
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
 
-    gpio_set_as_output(42);
-    gpio_set_value(42, 1);
-
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
 
-    gpio_set_value(42, 1);
-    
+    gpio_set_as_output(42);
+
     int v = 0;
+    
     // 48 nops = 700 KHz
-    __asm__(
-            "mov r0, #1      \n"
-            "lsl r0, #20     \n"
-            "loop:           \n"
-            "  str r0, [%0]  \n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  str r0, [%1] \n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop\n"
-            "  b loop"
-            :: "r"(&GPIO[GPIO_SET0]), "r"(&GPIO[GPIO_CLR0]) : "r0"
-            );
+    // 24 nops = 1.2 MHz (0.4 us)
+    // 12 nops = ~10 MHz (?)
+
+
+    transmit(buf, buf_end);
+    gpio_set_value(42, 1);
+    for(;;){}
+
+    int nlps_sent = 0;
     for (;;) {
-        gpio_set_value(GPIO_PIN_ETHERNET_TDp, v); v = !v;
+        /* gpio_set_value(GPIO_PIN_ETHERNET_TDp, v); v = !v; */
+
         /* wait(1000); // 1000 -> 1ms, 956Hz */
         /* wait(100); // 100 -> 0.1093ms, 9.188KHz */
         /* wait(1); // 1 -> 5us, 200KHz */
+
+        normal_link_pulse();
+
+        // sleep ~16ms
+        /* wait(16000); */
+        /* wait(100000); // 6s */
+        /* wait(50000); // 3s */
+        wait(75000); // ~16ms
+
+        if (++nlps_sent % 125 == 0) {
+            gpio_set_value(42, (v = !v));
+            transmit(buf, buf_end);
+        }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
 
@@ -170,10 +174,6 @@ void main(void) {
         /*         } */
         /*     } */
         /* } */
-
-        // FIXME: TP_IDL (3 * CLOCK positive)
-
-        // FIXME: NLP
     }
     
 }
