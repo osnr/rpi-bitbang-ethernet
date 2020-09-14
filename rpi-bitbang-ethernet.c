@@ -57,8 +57,25 @@ struct frame {
 short ip_checksum(struct iphdr* iphdr);
 
 extern void wait(int n);
-extern void transmit(unsigned char* buf, unsigned char* buf_end);
+extern void transmit_from_prefilled_gpio_set_or_clr(unsigned int* gpio_set_or_clrs, int bitcount);
 extern void normal_link_pulse(void);
+
+void transmit(unsigned char* buf, int buflen) {
+    unsigned int gpio_set_or_clrs[(buflen * 8) * 2];
+    for (int i = 0; i < buflen; i++) {
+        for (int j = 0; j < 8; j++) {
+            int bit = (buf[i] >> j) & 1;
+            if (bit) { // low then high
+                gpio_set_or_clrs[(i * 8 + j) * 2] = GPIO_CLR0;
+                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = GPIO_SET0;
+            } else { // high then low
+                gpio_set_or_clrs[(i * 8 + j) * 2] = GPIO_SET0;
+                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = GPIO_CLR0;
+            }
+        }
+    }
+    transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
+}
 
 void main(void) {
     const unsigned char source_ip[] = {192, 168, 1, 44};
@@ -156,7 +173,7 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(26, v);
-            transmit(buf, buf_end);
+            transmit(buf, buf_end - buf);
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
