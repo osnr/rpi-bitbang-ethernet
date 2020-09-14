@@ -1,5 +1,5 @@
   addr .req r0
-  buf_end .req r1
+  bitcount .req r1
 
   word .req r2
   i .req r3
@@ -50,8 +50,8 @@ transmit_from_prefilled_gpio_set_or_clr:
     str gpio_stamp, [gpio_set_or_clr]
     bl wait_bit_time
 
-    cmp addr, buf_end
-    blt bit_loop
+    subs bitcount, #1
+    bne bit_loop
 
   // Each packet needs to end with a "TP_IDL" (a positive pulse of
   // about 3 bit-times, followed by an idle period).

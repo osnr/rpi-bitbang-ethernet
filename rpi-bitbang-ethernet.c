@@ -6,12 +6,16 @@
 
 static volatile unsigned int* GPIO = (volatile unsigned int*) GPIO_BASE;
 void gpio_set_as_output(int pin) {
+#ifdef __arm__
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
     GPIO[pin/10] |= 1 << (3 * (pin % 10));
+#endif
 }
 void gpio_set_value(int pin, int value) {
+#ifdef __arm__
     if (value) { GPIO[GPIO_SET0 + pin/32] = 1 << (pin % 32); }
     else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
+#endif
 }
 
 #define GPIO_PIN_ETHERNET_TDp  20
@@ -34,8 +38,8 @@ struct iphdr {
     unsigned char ttl;
     unsigned char proto;
     unsigned short csum;
-    unsigned int saddr;
-    unsigned int daddr;
+    unsigned char saddr[4];
+    unsigned char daddr[4];
 } __attribute__((packed));
 
 struct udphdr {
@@ -66,15 +70,21 @@ void transmit(unsigned char* buf, int buflen) {
         for (int j = 0; j < 8; j++) {
             int bit = (buf[i] >> j) & 1;
             if (bit) { // low then high
-                gpio_set_or_clrs[(i * 8 + j) * 2] = GPIO_CLR0;
-                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = GPIO_SET0;
+                gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_CLR0];
+                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_SET0];
             } else { // high then low
-                gpio_set_or_clrs[(i * 8 + j) * 2] = GPIO_SET0;
-                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = GPIO_CLR0;
+                gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_SET0];
+                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
             }
         }
     }
+#ifndef __arm__
+    for (int i = 0; i < (buflen * 8) * 2; i++) {
+        printf("gpio_set_or_clrs[%d]: %x\n", i, gpio_set_or_clrs[i]);
+    }
+#else
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
+#endif
 }
 
 void main(void) {
@@ -106,7 +116,7 @@ void main(void) {
         s[0] = 0x00; s[1] = 0x12; s[2] = 0x34; s[3] = 0x56; s[4] = 0x78; s[5] = 0x90;
 
         // ETH_P_IP / 'this Ethernet frame contains an IP datagram'
-        ethhdr->ethertype = 0x0800; 
+        ethhdr->ethertype = 0x0008; // 0x0800; 
     }
     { // see RFC791: https://tools.ietf.org/html/rfc791
       // also see concretely: https://www.fpga4fun.com/10BASE-T2.html
@@ -114,23 +124,24 @@ void main(void) {
         iphdr->version = 4;
         iphdr->ihl = 5;
         iphdr->tos = 0x00; // don't care
-        iphdr->len = sizeof(frame->iphdr) + sizeof(frame->udphdr) + payload_len;
+        iphdr->len = sizeof(frame->iphdr) + sizeof(frame->udphdr) + payload_len; iphdr->len = (iphdr->len>>8) | (iphdr->len<<8);
         iphdr->id = 0x00; // don't care
         iphdr->flags = 0x00; // don't care
         iphdr->frag_offset = 0; // this is the only datagram in the fragment (?)
         iphdr->ttl = 8;
         iphdr->proto = 0x11; // UDP
         iphdr->csum = 0; // will fixup later
-        iphdr->saddr = (source_ip[0] << 4) | (source_ip[1] << 3) | (source_ip[2] << 2) | source_ip[1];
-        iphdr->daddr = (dest_ip[0] << 4) | (dest_ip[1] << 3) | (dest_ip[2] << 2) | dest_ip[1];
+        for (int i = 0; i < 4; i++) iphdr->saddr[i] = source_ip[i];
+        for (int i = 0; i < 4; i++) iphdr->daddr[i] = dest_ip[i];
 
         iphdr->csum = ip_checksum(iphdr);
+        iphdr->csum = (iphdr->csum>>8) | (iphdr->csum<<8);
     }
     { // see RFC768: https://tools.ietf.org/html/rfc768
         struct udphdr* udphdr = &frame->udphdr;
-        udphdr->sport = 1024;
-        udphdr->dport = 1024;
-        udphdr->ulen = sizeof(frame->udphdr) + payload_len;
+        udphdr->sport = 0x0010; // 1024;
+        udphdr->dport = 0x0010; // 1024;
+        udphdr->ulen = sizeof(frame->udphdr) + payload_len; udphdr->ulen = (udphdr->ulen>>8) | (udphdr->ulen<<8);
         udphdr->sum = 0; // don't care
     }
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
@@ -162,7 +173,9 @@ void main(void) {
         /* wait(100); // 100 -> 0.1093ms, 9.188KHz */
         /* wait(1); // 1 -> 5us, 200KHz */
 
+#ifdef __arm__
         normal_link_pulse();
+#endif
 
         // sleep ~16ms
         /* wait(16000); */
@@ -173,7 +186,9 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(26, v);
-            transmit(buf, buf_end - buf);
+            unsigned char bufsmall[] = {0x12, 0x34, 0x56};
+            transmit(bufsmall, 3);
+            /* transmit(buf, buf_end - buf); */
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
