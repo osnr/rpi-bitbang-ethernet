@@ -122,6 +122,9 @@ void main(void) {
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
 
     gpio_set_as_output(42);
+    gpio_set_as_output(26);
+
+    gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 
     int v = 0;
     
@@ -130,9 +133,9 @@ void main(void) {
     // 12 nops = ~10 MHz (?)
 
 
-    transmit(buf, buf_end);
-    gpio_set_value(42, 1);
-    for(;;){}
+    /* transmit(buf, buf_end); */
+    /* gpio_set_value(42, 1); */
+    /* for(;;){} */
 
     int nlps_sent = 0;
     for (;;) {
@@ -152,6 +155,7 @@ void main(void) {
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
+            gpio_set_value(26, v);
             transmit(buf, buf_end);
         }
 

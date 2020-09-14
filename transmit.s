@@ -14,7 +14,19 @@ wait:
   bne wait
   bx lr
 
-wait_bit_time:
+wait_bit_time: // 6 nops is baseline
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
   nop
   nop
   nop
@@ -26,6 +38,11 @@ wait_bit_time:
   .globl transmit
 transmit:
   push {r4, r5, r6, lr}
+  
+  mov gpio_stamp, #1
+  lsl gpio_stamp, #20
+  ldr gpio_set, =0xFE20001C
+  ldr gpio_clr, =0xFE200028
 
   word_loop:
     ldr word, [addr]
