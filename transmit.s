@@ -34,6 +34,42 @@ wait_bit_time: // 6 nops is baseline
   nop
   nop
   nop
+    nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
   bx lr
 
   .globl transmit_from_prefilled_gpio_set_or_clr

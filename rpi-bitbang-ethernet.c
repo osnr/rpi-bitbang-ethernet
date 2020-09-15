@@ -28,8 +28,7 @@ struct ethhdr {
 } __attribute__((packed));
 
 struct iphdr {
-    unsigned char version : 4;
-    unsigned char ihl : 4;
+    unsigned char ihl_and_version;
     unsigned char tos;
     unsigned short len;
     unsigned short id;
@@ -77,11 +76,13 @@ void transmit(unsigned char* buf, int buflen) {
                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
             }
         }
+        printf("%02x ", buf[i]);
     }
+    printf("\n");
 #ifndef __arm__
-    for (int i = 0; i < (buflen * 8) * 2; i++) {
-        printf("gpio_set_or_clrs[%d]: %x\n", i, gpio_set_or_clrs[i]);
-    }
+    /* for (int i = 0; i < (buflen * 8) * 2; i++) { */
+    /*     printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low"); */
+    /* } */
 #else
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
 #endif
@@ -121,8 +122,7 @@ void main(void) {
     { // see RFC791: https://tools.ietf.org/html/rfc791
       // also see concretely: https://www.fpga4fun.com/10BASE-T2.html
         struct iphdr* iphdr = &frame->iphdr;
-        iphdr->version = 4;
-        iphdr->ihl = 5;
+        iphdr->ihl_and_version = 0x45; // version 4, ihl 5
         iphdr->tos = 0x00; // don't care
         iphdr->len = sizeof(frame->iphdr) + sizeof(frame->udphdr) + payload_len; iphdr->len = (iphdr->len>>8) | (iphdr->len<<8);
         iphdr->id = 0x00; // don't care
@@ -139,8 +139,8 @@ void main(void) {
     }
     { // see RFC768: https://tools.ietf.org/html/rfc768
         struct udphdr* udphdr = &frame->udphdr;
-        udphdr->sport = 0x0010; // 1024;
-        udphdr->dport = 0x0010; // 1024;
+        udphdr->sport = 0x0004; // 1024;
+        udphdr->dport = 0x0004; // 1024;
         udphdr->ulen = sizeof(frame->udphdr) + payload_len; udphdr->ulen = (udphdr->ulen>>8) | (udphdr->ulen<<8);
         udphdr->sum = 0; // don't care
     }
@@ -186,9 +186,9 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(26, v);
-            unsigned char bufsmall[] = {0x12, 0x34, 0x56};
-            transmit(bufsmall, 3);
-            /* transmit(buf, buf_end - buf); */
+            /* unsigned char bufsmall[] = {0x12, 0x34, 0x56}; */
+            /* transmit(bufsmall, 3); */
+            transmit(buf, buf_end - buf);
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
