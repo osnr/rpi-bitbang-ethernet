@@ -76,15 +76,17 @@ void transmit(unsigned char* buf, int buflen) {
                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
             }
         }
-        printf("%02x ", buf[i]);
+        /* printf("%02x ", buf[i]); */
     }
-    printf("\n");
+    /* printf("\n"); */
 #ifndef __arm__
-    /* for (int i = 0; i < (buflen * 8) * 2; i++) { */
-    /*     printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low"); */
-    /* } */
+    for (int i = 0; i < (buflen * 8) * 2; i++) {
+        printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low");
+    }
 #else
+    gpio_set_value(26, 1);
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
+    gpio_set_value(26, 0);
 #endif
 }
 
@@ -148,6 +150,7 @@ void main(void) {
 
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
+    gpio_set_as_output(16);
 
     gpio_set_as_output(42);
     gpio_set_as_output(26);
@@ -185,31 +188,13 @@ void main(void) {
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
-            gpio_set_value(26, v);
             /* unsigned char bufsmall[] = {0x12, 0x34, 0x56}; */
-            /* transmit(bufsmall, 3); */
-            transmit(buf, buf_end - buf);
+            unsigned char bufsmall[] = {0x11, 0, 0};
+            transmit(bufsmall, 3);
+            /* transmit(buf, buf_end - buf); */
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
-
-        // FIXME: send buf contents
-        /* for (unsigned char* addr = &buf[0]; addr != buf_end; addr++) { */
-        /*     for (int i = 0; i < 8; i++) { */
-        /*         int bit = (*addr >> i) & 1; */
-        /*         if (bit) { */
-        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 1); */
-        /*             // CLOCK */
-        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0); */
-        /*             // CLOCK */
-        /*         } else { */
-        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0); */
-        /*             // CLOCK */
-        /*             gpio_set_value(GPIO_PIN_ETHERNET_TDp, 1); */
-        /*             // CLOCK */
-        /*         } */
-        /*     } */
-        /* } */
     }
     
 }

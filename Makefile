@@ -5,9 +5,14 @@ all: rpi-bitbang-ethernet.bin
 %.o: %.s
 	arm-none-eabi-as $< -o $@
 
-rpi-bitbang-ethernet.bin: start.o transmit.o rpi-bitbang-ethernet.o
+rpi-bitbang-ethernet.elf: start.o transmit.o rpi-bitbang-ethernet.o
 	arm-none-eabi-ld -nostdlib -T link.ld $^ -o rpi-bitbang-ethernet.elf
+
+rpi-bitbang-ethernet.bin: rpi-bitbang-ethernet.elf
 	arm-none-eabi-objcopy rpi-bitbang-ethernet.elf -O binary rpi-bitbang-ethernet.bin
 
 clean:
 	rm *.o *.bin *.elf
+
+deploy: rpi-bitbang-ethernet.elf
+	raspbootcom /dev/tty.usbserial-0001 $<

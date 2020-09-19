@@ -15,7 +15,9 @@ wait:
   bne wait
   bx lr
 
-wait_bit_time: // 6 nops is baseline
+wait_halfbit_time: // 3 nops is baseline
+  // 108 nops ~= half of 3.4 microseconds
+  // want 100 nanoseconds
   nop
   nop
   nop
@@ -34,7 +36,61 @@ wait_bit_time: // 6 nops is baseline
   nop
   nop
   nop
-    nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
   nop
   nop
   nop
@@ -74,17 +130,29 @@ wait_bit_time: // 6 nops is baseline
 
   .globl transmit_from_prefilled_gpio_set_or_clr
 transmit_from_prefilled_gpio_set_or_clr:
-  push {r4, r5, r6, r7, lr}
+  push {r4, r5, r6, r7, r8, lr}
   
   mov gpio_stamp, #1
   lsl gpio_stamp, #20
   ldr gpio_set, =0xFE20001C
   ldr gpio_clr, =0xFE200028
 
+  // marking for observation
+  mov r8, #1
+  lsl r8, #16
+
   bit_loop:
+    // marking for observation
+    tst bitcount, #1
+    bne bit_loop_body
+    tst bitcount, #3
+    strne r8, [gpio_set]
+    streq r8, [gpio_clr]
+
+  bit_loop_body:  
     ldr gpio_set_or_clr, [addr], #4
     str gpio_stamp, [gpio_set_or_clr]
-    bl wait_bit_time
+    bl wait_halfbit_time
 
     subs bitcount, #1
     bne bit_loop
@@ -92,15 +160,21 @@ transmit_from_prefilled_gpio_set_or_clr:
   // Each packet needs to end with a "TP_IDL" (a positive pulse of
   // about 3 bit-times, followed by an idle period).
   str gpio_stamp, [gpio_set]
-  bl wait_bit_time
-  bl wait_bit_time
-  bl wait_bit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
   str gpio_stamp, [gpio_clr]
-  bl wait_bit_time
-  bl wait_bit_time
-  bl wait_bit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
 
-  pop {r4, r5, r6, r7, lr}
+  pop {r4, r5, r6, r7, r8, lr}
   bx lr
 
   .globl normal_link_pulse
@@ -113,7 +187,8 @@ normal_link_pulse:
   ldr gpio_clr, =0xFE200028
 
   str gpio_stamp, [gpio_set]
-  bl wait_bit_time
+  bl wait_halfbit_time
+  bl wait_halfbit_time
   str gpio_stamp, [gpio_clr]
 
   pop {r4, r5, r6, r7, lr}
