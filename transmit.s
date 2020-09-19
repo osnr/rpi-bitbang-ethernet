@@ -16,7 +16,7 @@ wait:
   bx lr
 
 wait_halfbit_time: // 3 nops is baseline
-  // 108 nops ~= half of 3.4 microseconds
+  // 108 nops ~= half of 4.8 microseconds ~= 208,000 bits/s
   // want 100 nanoseconds
   nop
   nop

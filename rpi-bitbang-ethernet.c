@@ -189,8 +189,8 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             /* unsigned char bufsmall[] = {0x12, 0x34, 0x56}; */
-            unsigned char bufsmall[] = {0x11, 0, 0};
-            transmit(bufsmall, 3);
+            unsigned char bufsmall[] = {0x12};
+            transmit(bufsmall, 1);
             /* transmit(buf, buf_end - buf); */
         }
 
