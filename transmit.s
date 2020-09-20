@@ -22,7 +22,7 @@ wait_halfbit_time: // 3 nops is baseline
   // want 100 nanoseconds
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
-  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
   bx lr
 
   .globl transmit_from_prefilled_gpio_set_or_clr

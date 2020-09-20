@@ -250,7 +250,7 @@ void main(void) {
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
     struct frametlr* frametlr = (struct frametlr*) buf_end;
 
-    frametlr->fcs = crc32b(frame, buf_end - (unsigned char*) frame);
+    frametlr->fcs = crc32b((unsigned char*) frame, buf_end - (unsigned char*) frame);
     
     buf_end += sizeof(*frametlr);
 
