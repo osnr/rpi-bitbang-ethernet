@@ -194,13 +194,6 @@ void main(void) {
     char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
     int payload_len = 87;
 
-#ifdef __arm__
-    uart_putc('h'); /* uart_putc(payload[0]); */
-    uart_puts(payload);
-    /* uart_putc(payload[0]); uart_putc(payload[1]); */
-    uart_putc('i');
-#endif
-
     unsigned char buf[1024];
     // Ethernet preamble
     buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
@@ -264,40 +257,17 @@ void main(void) {
     gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 
     int v = 0;
-    
-    // 48 nops = 700 KHz
-    // 24 nops = 1.2 MHz (0.4 us)
-    // 12 nops = ~10 MHz (?)
-
-
-    /* transmit(buf, buf_end); */
-    /* gpio_set_value(42, 1); */
-    /* for(;;){} */
 
     int nlps_sent = 0;
     for (;;) {
-        /* gpio_set_value(GPIO_PIN_ETHERNET_TDp, v); v = !v; */
-
-        /* wait(1000); // 1000 -> 1ms, 956Hz */
-        /* wait(100); // 100 -> 0.1093ms, 9.188KHz */
-        /* wait(1); // 1 -> 5us, 200KHz */
-
 #ifdef __arm__
         normal_link_pulse();
 #endif
 
-        // sleep ~16ms
-        /* wait(16000); */
-        /* wait(100000); // 6s */
-        /* wait(50000); // 3s */
         wait(75000 * 70); // ~16ms
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
-            // for some reason, I can't send from a buf of size 3 (even if I only send 1 byte!)
-            /* unsigned char bufsmall[] = {0x12, 0x34, 0x01}; */
-            /* unsigned char bufsmall[] = {nlps_sent / 125}; */
-            /* transmit(bufsmall, 3); */
             transmit(buf, buf_end - buf);
         }
 
