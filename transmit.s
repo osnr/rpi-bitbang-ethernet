@@ -36,7 +36,7 @@ transmit_from_prefilled_gpio_set_or_clr:
 */
   bit_loop:
     // marking for observation
-                                /*
+    /*
     tst halfbitcount, #1        
     bne bit_loop_body
     tst halfbitcount, #3
