@@ -49,12 +49,16 @@ struct udphdr {
 } __attribute__((packed));
 
 
-struct frame {
+struct framehdr {
     struct ethhdr ethhdr;
     struct iphdr iphdr;
     struct udphdr udphdr;
     
     unsigned char payload[];
+} __attribute__((packed));
+
+struct frametlr {
+    unsigned int fcs;
 } __attribute__((packed));
 
 short ip_checksum(struct iphdr* iphdr);
@@ -117,6 +121,7 @@ void uart_puts(char* s) {
 
 void EnableMMU (void)
 {
+#ifdef __arm__
   static volatile __attribute__ ((aligned (0x4000))) unsigned PageTable[4096];
 
   unsigned base;
@@ -156,6 +161,25 @@ void EnableMMU (void)
   __asm__ volatile ("mrc p15,0,%0,c1,c0,0" : "=r" (mode));
   mode |= 0x0480180D;
   __asm__ volatile ("mcr p15,0,%0,c1,c0,0" :: "r" (mode) : "memory");
+#endif
+}
+
+unsigned int crc32b(unsigned char *message, int messagelen) {
+   int i, j;
+   unsigned int byte, crc, mask;
+
+   i = 0;
+   crc = 0xFFFFFFFF;
+   while (i < messagelen) {
+      byte = message[i];            // Get next byte.
+      crc = crc ^ byte;
+      for (j = 7; j >= 0; j--) {    // Do eight times.
+         mask = -(crc & 1);
+         crc = (crc >> 1) ^ (0xEDB88320 & mask);
+      }
+      i = i + 1;
+   }
+   return ~crc;
 }
 
 void main(void) {
@@ -167,20 +191,22 @@ void main(void) {
     const unsigned char dest_ip[] = {192, 168, 1, 6};
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
 
-    char *payload = "Hello!\n";
-    int payload_len = 7;
+    char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
+    int payload_len = 87;
 
+#ifdef __arm__
     uart_putc('h'); /* uart_putc(payload[0]); */
     uart_puts(payload);
     /* uart_putc(payload[0]); uart_putc(payload[1]); */
     uart_putc('i');
+#endif
 
     unsigned char buf[1024];
     // Ethernet preamble
     buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
     buf[7] = 0xD5; // start frame delimiter
 
-    struct frame* frame = (struct frame*) &buf[8];
+    struct framehdr* frame = (struct framehdr*) &buf[8];
     for (int i = 0; i < payload_len; i++) { frame->payload[i] = payload[i]; }
 
     {
@@ -222,6 +248,11 @@ void main(void) {
         udphdr->sum = 0; // don't care
     }
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
+    struct frametlr* frametlr = (struct frametlr*) buf_end;
+
+    frametlr->fcs = crc32b(frame, buf_end - (unsigned char*) frame);
+    
+    buf_end += sizeof(*frametlr);
 
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
@@ -259,7 +290,7 @@ void main(void) {
         /* wait(16000); */
         /* wait(100000); // 6s */
         /* wait(50000); // 3s */
-        wait(75000); // ~16ms
+        wait(75000 * 70); // ~16ms
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));

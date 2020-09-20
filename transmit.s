@@ -16,8 +16,13 @@ wait:
   bx lr
 
 wait_halfbit_time: // 3 nops is baseline
-  // 108 nops ~= half of 4.8 microseconds ~= 208,000 bits/s
+  // 108 nops ~= half of 4.8 microseconds ~= 208,000 bits/s (w/o opt)
+  // w MMU: 8 nops = 13 microseconds for whole packet.
+  // so 16 = 26. 24 = 39
   // want 100 nanoseconds
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   bx lr
 
   .globl transmit_from_prefilled_gpio_set_or_clr
