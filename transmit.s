@@ -1,5 +1,5 @@
   addr .req r0
-  bitcount .req r1
+  halfbitcount .req r1
 
   word .req r2
   i .req r3
@@ -18,114 +18,6 @@ wait:
 wait_halfbit_time: // 3 nops is baseline
   // 108 nops ~= half of 4.8 microseconds ~= 208,000 bits/s
   // want 100 nanoseconds
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   bx lr
 
   .globl transmit_from_prefilled_gpio_set_or_clr
@@ -138,23 +30,25 @@ transmit_from_prefilled_gpio_set_or_clr:
   ldr gpio_clr, =0xFE200028
 
   // marking for observation
-  mov r8, #1
+  /*
+  mov r8, #1                    
   lsl r8, #16
-
+*/
   bit_loop:
     // marking for observation
-    tst bitcount, #1
+                                /*
+    tst halfbitcount, #1        
     bne bit_loop_body
-    tst bitcount, #3
+    tst halfbitcount, #3
     strne r8, [gpio_set]
-    streq r8, [gpio_clr]
+    streq r8, [gpio_clr] */
 
   bit_loop_body:  
     ldr gpio_set_or_clr, [addr], #4
     str gpio_stamp, [gpio_set_or_clr]
     bl wait_halfbit_time
 
-    subs bitcount, #1
+    subs halfbitcount, #1
     bne bit_loop
 
   // Each packet needs to end with a "TP_IDL" (a positive pulse of

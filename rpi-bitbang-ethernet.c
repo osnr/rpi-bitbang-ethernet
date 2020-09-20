@@ -60,7 +60,7 @@ struct frame {
 short ip_checksum(struct iphdr* iphdr);
 
 extern void wait(int n);
-extern void transmit_from_prefilled_gpio_set_or_clr(unsigned int* gpio_set_or_clrs, int bitcount);
+extern void transmit_from_prefilled_gpio_set_or_clr(unsigned int* gpio_set_or_clrs, int halfbitcount);
 extern void normal_link_pulse(void);
 
 void transmit(unsigned char* buf, int buflen) {
@@ -220,9 +220,9 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             // for some reason, I can't send from a buf of size 3 (even if I only send 1 byte!)
-            /* unsigned char bufsmall[] = {0x12, 0x34, 0x01, 0x02}; */
+            /* unsigned char bufsmall[] = {0x12, 0x34, 0x01}; */
             /* unsigned char bufsmall[] = {nlps_sent / 125}; */
-            /* transmit(bufsmall, 4); */
+            /* transmit(bufsmall, 3); */
             transmit(buf, buf_end - buf);
         }
 
