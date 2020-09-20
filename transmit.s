@@ -24,28 +24,14 @@ wait_halfbit_time:
 
   .globl transmit_from_prefilled_gpio_set_or_clr
 transmit_from_prefilled_gpio_set_or_clr:
-  push {r4, r5, r6, r7, r8, lr}
+  push {r4, r5, r6, r7, lr}
   
   mov gpio_stamp, #1
   lsl gpio_stamp, #20
   ldr gpio_set, =0xFE20001C
   ldr gpio_clr, =0xFE200028
 
-  // marking for observation
-  /*
-  mov r8, #1                    
-  lsl r8, #16
-*/
   bit_loop:
-    // marking for observation
-    /*
-    tst halfbitcount, #1        
-    bne bit_loop_body
-    tst halfbitcount, #3
-    strne r8, [gpio_set]
-    streq r8, [gpio_clr] */
-
-  bit_loop_body:  
     ldr gpio_set_or_clr, [addr], #4
     str gpio_stamp, [gpio_set_or_clr]
     bl wait_halfbit_time
@@ -70,7 +56,7 @@ transmit_from_prefilled_gpio_set_or_clr:
   bl wait_halfbit_time
   bl wait_halfbit_time
 
-  pop {r4, r5, r6, r7, r8, lr}
+  pop {r4, r5, r6, r7, lr}
   bx lr
 
   .globl normal_link_pulse

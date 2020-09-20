@@ -6,16 +6,12 @@
 
 static volatile unsigned int* volatile GPIO = (volatile unsigned int*) GPIO_BASE;
 void gpio_set_as_output(int pin) {
-#ifdef __arm__
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
     GPIO[pin/10] |= 1 << (3 * (pin % 10));
-#endif
 }
 void gpio_set_value(int pin, int value) {
-#ifdef __arm__
     if (value) { GPIO[GPIO_SET0 + pin/32] = 1 << (pin % 32); }
     else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
-#endif
 }
 
 #define GPIO_PIN_ETHERNET_TDp  20
@@ -62,6 +58,7 @@ struct frametlr {
 } __attribute__((packed));
 
 short ip_checksum(struct iphdr* iphdr);
+unsigned int crc32b(unsigned char *message, int messagelen);
 
 extern void wait(int n);
 extern void transmit_from_prefilled_gpio_set_or_clr(unsigned int* gpio_set_or_clrs, int halfbitcount);
@@ -80,48 +77,12 @@ void transmit(unsigned char* buf, int buflen) {
                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
             }
         }
-#ifndef __arm__
-        printf("%02x ", buf[i]);
-#endif
     }
-#ifndef __arm__
-    printf("\n");
-#endif
-#ifndef __arm__
-    for (int i = 0; i < (buflen * 8) * 2; i++) {
-        /* printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low"); */
-    }
-#else
-    gpio_set_value(19, 1);
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
-    gpio_set_value(19, 0);
-#endif
-}
-
-
-/* PL011 UART registers */
-#define MMIO_BASE   0xFE000000
-#define UART0_DR        ((volatile unsigned int*)(MMIO_BASE+0x00201000))
-#define UART0_FR        ((volatile unsigned int*)(MMIO_BASE+0x00201018))
-#define UART0_IBRD      ((volatile unsigned int*)(MMIO_BASE+0x00201024))
-#define UART0_FBRD      ((volatile unsigned int*)(MMIO_BASE+0x00201028))
-#define UART0_LCRH      ((volatile unsigned int*)(MMIO_BASE+0x0020102C))
-#define UART0_CR        ((volatile unsigned int*)(MMIO_BASE+0x00201030))
-#define UART0_IMSC      ((volatile unsigned int*)(MMIO_BASE+0x00201038))
-#define UART0_ICR       ((volatile unsigned int*)(MMIO_BASE+0x00201044))
-void uart_putc(unsigned int c) {
-    /* wait until we can send */
-    do{__asm__ volatile("nop");}while(*UART0_FR&0x20);
-    /* write the character to the buffer */
-    *UART0_DR=c;
-}
-void uart_puts(char* s) {
-    for (int i = 0; i < 2; i++) uart_putc(s[i]);
 }
 
 void EnableMMU (void)
 {
-#ifdef __arm__
   static volatile __attribute__ ((aligned (0x4000))) unsigned PageTable[4096];
 
   unsigned base;
@@ -161,25 +122,6 @@ void EnableMMU (void)
   __asm__ volatile ("mrc p15,0,%0,c1,c0,0" : "=r" (mode));
   mode |= 0x0480180D;
   __asm__ volatile ("mcr p15,0,%0,c1,c0,0" :: "r" (mode) : "memory");
-#endif
-}
-
-unsigned int crc32b(unsigned char *message, int messagelen) {
-   int i, j;
-   unsigned int byte, crc, mask;
-
-   i = 0;
-   crc = 0xFFFFFFFF;
-   while (i < messagelen) {
-      byte = message[i];            // Get next byte.
-      crc = crc ^ byte;
-      for (j = 7; j >= 0; j--) {    // Do eight times.
-         mask = -(crc & 1);
-         crc = (crc >> 1) ^ (0xEDB88320 & mask);
-      }
-      i = i + 1;
-   }
-   return ~crc;
 }
 
 void main(void) {
@@ -249,10 +191,8 @@ void main(void) {
 
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
-    gpio_set_as_output(16);
 
     gpio_set_as_output(42);
-    gpio_set_as_output(19);
 
     gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 
@@ -260,9 +200,7 @@ void main(void) {
 
     int nlps_sent = 0;
     for (;;) {
-#ifdef __arm__
         normal_link_pulse();
-#endif
 
         wait(75000 * 70); // ~16ms
 
@@ -300,4 +238,22 @@ short ip_checksum(struct iphdr* iphdr) {
         sum = (sum & 0xffff) + (sum >> 16);
 
     return ~sum;
+}
+
+unsigned int crc32b(unsigned char *message, int messagelen) {
+   int i, j;
+   unsigned int byte, crc, mask;
+
+   i = 0;
+   crc = 0xFFFFFFFF;
+   while (i < messagelen) {
+      byte = message[i];            // Get next byte.
+      crc = crc ^ byte;
+      for (j = 7; j >= 0; j--) {    // Do eight times.
+         mask = -(crc & 1);
+         crc = (crc >> 1) ^ (0xEDB88320 & mask);
+      }
+      i = i + 1;
+   }
+   return ~crc;
 }

@@ -16,7 +16,3 @@ clean:
 
 deploy: rpi-bitbang-ethernet.bin
 	raspbootcom /dev/tty.usbserial-0001 $<
-
-localtest:
-	cc -Wno-implicit-function-declaration -Og -g -o rpi-bitbang-ethernet rpi-bitbang-ethernet.c
-	./rpi-bitbang-ethernet
