@@ -4,7 +4,7 @@
 #define GPIO_SET0   7
 #define GPIO_CLR0   10
 
-static volatile unsigned int* GPIO = (volatile unsigned int*) GPIO_BASE;
+static volatile unsigned int* volatile GPIO = (volatile unsigned int*) GPIO_BASE;
 void gpio_set_as_output(int pin) {
 #ifdef __arm__
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
@@ -76,21 +76,47 @@ void transmit(unsigned char* buf, int buflen) {
                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
             }
         }
-        /* printf("%02x ", buf[i]); */
+#ifndef __arm__
+        printf("%02x ", buf[i]);
+#endif
     }
-    /* printf("\n"); */
+#ifndef __arm__
+    printf("\n");
+#endif
 #ifndef __arm__
     for (int i = 0; i < (buflen * 8) * 2; i++) {
-        printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low");
+        /* printf("gpio_set_or_clrs[%02d]: %08x (%s)\n", i, gpio_set_or_clrs[i], gpio_set_or_clrs[i] == &GPIO[GPIO_SET0] ? "high" : "low"); */
     }
 #else
-    gpio_set_value(26, 1);
+    gpio_set_value(19, 1);
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
-    gpio_set_value(26, 0);
+    gpio_set_value(19, 0);
 #endif
 }
 
+
+/* PL011 UART registers */
+#define MMIO_BASE   0xFE000000
+#define UART0_DR        ((volatile unsigned int*)(MMIO_BASE+0x00201000))
+#define UART0_FR        ((volatile unsigned int*)(MMIO_BASE+0x00201018))
+#define UART0_IBRD      ((volatile unsigned int*)(MMIO_BASE+0x00201024))
+#define UART0_FBRD      ((volatile unsigned int*)(MMIO_BASE+0x00201028))
+#define UART0_LCRH      ((volatile unsigned int*)(MMIO_BASE+0x0020102C))
+#define UART0_CR        ((volatile unsigned int*)(MMIO_BASE+0x00201030))
+#define UART0_IMSC      ((volatile unsigned int*)(MMIO_BASE+0x00201038))
+#define UART0_ICR       ((volatile unsigned int*)(MMIO_BASE+0x00201044))
+void uart_putc(unsigned int c) {
+    /* wait until we can send */
+    do{__asm__ volatile("nop");}while(*UART0_FR&0x20);
+    /* write the character to the buffer */
+    *UART0_DR=c;
+}
+void uart_puts(char* s) {
+    for (int i = 0; i < 2; i++) uart_putc(s[i]);
+}
+
 void main(void) {
+    /* gpio_set_as_alt4(24); gpio_set_as_alt4(25); gpio_set_as_alt4(26); gpio_set_as_alt4(27); */
     const unsigned char source_ip[] = {192, 168, 1, 44};
 
     // destination set to my laptop's MAC and IP address; you should change this for yours.
@@ -99,6 +125,11 @@ void main(void) {
 
     char *payload = "Hello!\n";
     int payload_len = 7;
+
+    uart_putc('h'); /* uart_putc(payload[0]); */
+    uart_puts(payload);
+    /* uart_putc(payload[0]); uart_putc(payload[1]); */
+    uart_putc('i');
 
     unsigned char buf[1024];
     // Ethernet preamble
@@ -153,7 +184,7 @@ void main(void) {
     gpio_set_as_output(16);
 
     gpio_set_as_output(42);
-    gpio_set_as_output(26);
+    gpio_set_as_output(19);
 
     gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 
@@ -188,10 +219,11 @@ void main(void) {
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
-            /* unsigned char bufsmall[] = {0x12, 0x34, 0x56}; */
-            unsigned char bufsmall[] = {0x12};
-            transmit(bufsmall, 1);
-            /* transmit(buf, buf_end - buf); */
+            // for some reason, I can't send from a buf of size 3 (even if I only send 1 byte!)
+            /* unsigned char bufsmall[] = {0x12, 0x34, 0x01, 0x02}; */
+            /* unsigned char bufsmall[] = {nlps_sent / 125}; */
+            /* transmit(bufsmall, 4); */
+            transmit(buf, buf_end - buf);
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html

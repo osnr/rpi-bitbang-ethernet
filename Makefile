@@ -1,7 +1,7 @@
 all: rpi-bitbang-ethernet.bin
 
 %.o: %.c
-	arm-none-eabi-gcc -g -Wall -Og -std=c99 -ffreestanding -nostdlib -c $< -o $@
+	arm-none-eabi-gcc -g -Wall -Og -std=c99 -fno-omit-frame-pointer -ffreestanding -nostdlib -c $< -o $@
 %.o: %.s
 	arm-none-eabi-as $< -o $@
 
@@ -14,5 +14,9 @@ rpi-bitbang-ethernet.bin: rpi-bitbang-ethernet.elf
 clean:
 	rm *.o *.bin *.elf
 
-deploy: rpi-bitbang-ethernet.elf
+deploy: rpi-bitbang-ethernet.bin
 	raspbootcom /dev/tty.usbserial-0001 $<
+
+localtest:
+	cc -Wno-implicit-function-declaration -o rpi-bitbang-ethernet rpi-bitbang-ethernet.c
+	./rpi-bitbang-ethernet

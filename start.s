@@ -1,5 +1,24 @@
 .globl _start
 _start:
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  nop
+  
   mov sp, #0x8000000
 
   // FIXME: enable caches
@@ -14,4 +33,6 @@ _start:
 
   bl main
 
+hello: b hello
+goodbye:   b goodbye
 hang: b hang
