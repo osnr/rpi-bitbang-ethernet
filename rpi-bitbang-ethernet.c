@@ -78,11 +78,13 @@ void transmit(unsigned char* buf, int buflen) {
             }
         }
     }
+    gpio_set_value(19, 1);
     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
+    gpio_set_value(19, 0);
 }
 
-void EnableMMU (void)
-{
+void enable_mmu(void) {
+// from https://www.raspberrypi.org/forums/viewtopic.php?t=65922
   static volatile __attribute__ ((aligned (0x4000))) unsigned PageTable[4096];
 
   unsigned base;
@@ -125,13 +127,16 @@ void EnableMMU (void)
 }
 
 void main(void) {
-    EnableMMU();
+    enable_mmu();
 
     const unsigned char source_ip[] = {192, 168, 1, 44};
+    /* const unsigned char source_ip[] = {169, 254, 60, 4};*/
 
     // destination set to my laptop's MAC and IP address; you should change this for yours.
     const unsigned char dest_ip[] = {192, 168, 1, 6};
+    /* const unsigned char dest_ip[] = {169, 254, 60, 3}; */
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
+    /* const unsigned int dest_mac[] = {0x70, 0x88, 0x6B, 0x89, 0x61, 0x11}; */
 
     char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
     int payload_len = 87;
@@ -147,7 +152,8 @@ void main(void) {
     {
         struct ethhdr* ethhdr = &frame->ethhdr;
         // (the proper way to do this would be to do an ARP thing to
-        // online resolve MAC addr from IP addr ?)
+        // online resolve MAC addr from IP addr, instead of
+        // hard-coding MAC ?)
         for (int i = 0; i < 6; i++) ethhdr->dmac[i] = dest_mac[i];
 
         unsigned char* s = ethhdr->smac;
@@ -173,7 +179,6 @@ void main(void) {
         for (int i = 0; i < 4; i++) iphdr->daddr[i] = dest_ip[i];
 
         iphdr->csum = ip_checksum(iphdr);
-        iphdr->csum = (iphdr->csum>>8) | (iphdr->csum<<8);
     }
     { // see RFC768: https://tools.ietf.org/html/rfc768
         struct udphdr* udphdr = &frame->udphdr;
@@ -193,6 +198,7 @@ void main(void) {
     gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
 
     gpio_set_as_output(42);
+    gpio_set_as_output(19);
 
     gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 

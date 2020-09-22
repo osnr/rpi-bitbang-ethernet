@@ -1,16 +1,19 @@
-# pi-ethernet-bitbang
+# rpi-bitbang-ethernet
 
 I recently learned that sending UDP packets over 10BASE-T Ethernet is
 actually [not that
-complicated](https://www.fpga4fun.com/10BASE-T.html). After seeing how
-little code it is on an FPGA, I wanted to reimplement it in C on a
-Raspberry Pi 4 so I could understand it better (and maybe prototype
-further ideas, since I can think in C but not in Verilog yet). The Pi
-4 should be fast enough to bit-bang Ethernet comfortably (at least
-20MHz), unlike a lot of microcontrollers.
+complicated](https://www.fpga4fun.com/10BASE-T.html).
 
-I don't like doing stuff like this in Linux, so we'll do it on bare
-metal. It's more fun, anyway.
+After seeing how little code it is on an FPGA, I wanted to reimplement
+it in C to understand it better and maybe prototype further ideas. (I
+am capable of thinking in C but not in Verilog yet.) The Pi 4 should
+be [fast enough](https://github.com/hzeller/rpi-gpio-dma-demo) to
+bit-bang Ethernet comfortably (far above 20MHz), unlike your average
+microcontroller.
+
+I don't like doing stuff like this in Linux, and it sort of defeats
+the point of doing it from scratch, and it's even harder to nail the
+timing there, so we'll do it on bare metal. It's more fun, anyway.
 
 It seems clear that this approach, a few hundred lines of C that
 tightly fits the Ethernet/IP/UDP protocols and pokes at some registers
@@ -22,7 +25,7 @@ stack](https://www.raspberrypi.org/forums/viewtopic.php?t=36044) :-/
 ## how to use
 
 _Warning_: This is pretty sketchy and out of spec for Ethernet, so
-you might fry something. 
+you might fry something. Magnetics. Voltage. Power over Ethernet.
 
 I've only tested it on the Raspberry Pi 4B with 2GB RAM.
 
@@ -30,14 +33,15 @@ I've only tested it on the Raspberry Pi 4B with 2GB RAM.
 or use a breakout board (or MagJack), and connect pins 1 and 2 of the
 Ethernet cable to [GPIO pins 20 and 21 on the Pi](https://pinout.xyz/)
 (on the bottom right). Connect the other end to your Ethernet switch
-(or to a computer directly, although you might then need to use pins 3
-and 6 instead?).
+(or to a computer directly -- the link says you should crossover and
+use pins 3 and 6 in this case, but I haven't found that to be
+necessary. Pins 1 and 2 seem fine these days).
 
 Get a microSD card and format it to FAT. Copy `vendor/start4.elf` to
 the root of the SD card.
 
-Edit `rpi-bitbang-ethernet.c` with your computer's IP address and MAC
-address.
+Edit `rpi-bitbang-ethernet.c` and put your computer's IP address and
+MAC address in.
 
 ```
 $ make
@@ -47,11 +51,15 @@ Copy `rpi-bitbang-ethernet.bin` to the root of the SD card and rename
 it to `kernel7l.img`.
 
 Run `nc -ul 1024` in a terminal on your computer and leave it on;
-you'll see the UDP packet from the Pi here.
+the UDP packet from the Pi will show up here.
 
 Put the SD card in your Pi and power it on. The green ACT LED should
 toggle every 2 seconds or so, and you should (usually) see the packet
 show up on your computer each time!
+
+## how it works
+
+transmit.s
 
 ## development
 
@@ -61,6 +69,17 @@ You could bootload over JTAG, but I didn't set that up until late in
 the development process.
 
 ## debugging
+
+If you don't see the packet from `nc`, you should plug the Ethernet
+cable directly into your computer and use Wireshark, so at least the
+Ethernet frames will show up there, even if the content / IP
+addressing is totally wrong for some reason.
+
+(Even if the Ethernet frames don't send at all, Wireshark should show
+a flurry of ARP and MDNS packets and stuff from your computer as soon
+as the Pi starts sending out link test pulses, where your computer is
+trying to figure out what's going on with this newly connected
+network.)
 
 I recommend getting a JTAG dongle (I just used an [FT232R
 dongle](https://jacobncalvert.com/2020/02/04/jtag-on-the-cheap-with-the-ftdi-ft232r/)
@@ -87,6 +106,14 @@ lot of time because I had wires connected to a mix of alt4 and alt5.
 
 ## ideas
 
+Internet!
+
+Receive packets!
+
+TCP!
+
+Cleaner code!
+
 I think it would be cool to make a radically small OS with graphics,
 networking, etc, where you just dedicate a core to each of them and
-bit-bang. No complicated peripheral setup code.
+have it bit-bang. No complicated peripheral setup code.
