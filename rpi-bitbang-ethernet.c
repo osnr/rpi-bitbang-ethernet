@@ -61,27 +61,27 @@ short ip_checksum(struct iphdr* iphdr);
 unsigned int crc32b(unsigned char *message, int messagelen);
 
 extern void wait(int n);
-extern void transmit_from_prefilled_gpio_set_or_clr(unsigned int* gpio_set_or_clrs, int halfbitcount);
+extern void transmit(unsigned char* buf, unsigned char* buf_end);
 extern void normal_link_pulse(void);
 
-void transmit(unsigned char* buf, int buflen) {
-    unsigned int gpio_set_or_clrs[(buflen * 8) * 2];
-    for (int i = 0; i < buflen; i++) {
-        for (int j = 0; j < 8; j++) {
-            int bit = (buf[i] >> j) & 1;
-            if (bit) { // low then high
-                gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_CLR0];
-                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_SET0];
-            } else { // high then low
-                gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_SET0];
-                gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0];
-            }
-        }
-    }
-    gpio_set_value(19, 1);
-    transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2);
-    gpio_set_value(19, 0);
-}
+/* void transmit(unsigned char* buf, int buflen) { */
+/*     unsigned int gpio_set_or_clrs[(buflen * 8) * 2]; */
+/*     for (int i = 0; i < buflen; i++) { */
+/*         for (int j = 0; j < 8; j++) { */
+/*             int bit = (buf[i] >> j) & 1; */
+/*             if (bit) { // low then high */
+/*                 gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_CLR0]; */
+/*                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_SET0]; */
+/*             } else { // high then low */
+/*                 gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_SET0]; */
+/*                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0]; */
+/*             } */
+/*         } */
+/*     } */
+/*     gpio_set_value(19, 1); */
+/*     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2); */
+/*     gpio_set_value(19, 0); */
+/* } */
 
 void enable_mmu(void) {
 // from https://www.raspberrypi.org/forums/viewtopic.php?t=65922
@@ -143,7 +143,7 @@ void main(void) {
 
     unsigned char buf[1024];
     // Ethernet preamble
-    buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
+    buf[0] = 0x00; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
     buf[7] = 0xD5; // start frame delimiter
     
     /* struct framehdr* frame = (struct framehdr*) &buf[8]; */
@@ -210,19 +210,23 @@ void main(void) {
     gpio_set_as_output(42);
     gpio_set_as_output(19);
 
+    gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0);
     gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
 
     int v = 0;
 
     int nlps_sent = 0;
     for (;;) {
-        normal_link_pulse();
-
         wait(75000 * 70); // ~16ms
 
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
-            transmit(buf, buf_end - buf);
+            gpio_set_value(19, 1);
+            unsigned char smallbuf[] = {0x00};
+            transmit(smallbuf, &smallbuf[1]);
+            gpio_set_value(19, 0);
+        } else {
+            normal_link_pulse();
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html

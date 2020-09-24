@@ -1,11 +1,11 @@
-  addr .req r0
-  halfbitcount .req r1
+  buf .req r0
+  buf_end .req r1
 
-  word .req r2
+  byte .req r2
   i .req r3
 
-  gpio_stamp .req r4
-  gpio_set_or_clr .req r5
+  pin_ethernet_tdp .req r4
+  pin_ethernet_tdm .req r5
   gpio_set .req r6
   gpio_clr .req r7
 
@@ -20,35 +20,136 @@ wait_halfbit_time:
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
+
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop; nop
   bx lr
 
-  .globl transmit_from_prefilled_gpio_set_or_clr
-transmit_from_prefilled_gpio_set_or_clr:
+  .globl transmit
+transmit:
   push {r4, r5, r6, r7, lr}
-  
-  mov gpio_stamp, #1
-  lsl gpio_stamp, #20
+
+  mov pin_ethernet_tdp, #1
+  lsl pin_ethernet_tdp, #20
+  mov pin_ethernet_tdm, #1
+  lsl pin_ethernet_tdm, #21
   ldr gpio_set, =0xFE20001C
   ldr gpio_clr, =0xFE200028
 
-  bit_loop:
-    ldr gpio_set_or_clr, [addr], #4
-    str gpio_stamp, [gpio_set_or_clr]
-    bl wait_halfbit_time
+  byte_loop:
+    ldrb byte, [buf], #1
+    mov i, #1
+    bit_loop:
+      lsrs byte, i
 
-    subs halfbitcount, #1
-    bne bit_loop
+      // bit = 1: LOW -> HIGH
+      strcs pin_ethernet_tdm, [gpio_set]
+      strcs pin_ethernet_tdp, [gpio_clr]
+      blcs wait_halfbit_time
+      strcs pin_ethernet_tdp, [gpio_set]
+      strcs pin_ethernet_tdm, [gpio_clr]
+      blcs wait_halfbit_time
+
+      // bit = 0: HIGH -> LOW
+      strcc pin_ethernet_tdp, [gpio_set]
+      strcc pin_ethernet_tdm, [gpio_clr]
+      blcc wait_halfbit_time
+      strcc pin_ethernet_tdm, [gpio_set]
+      strcc pin_ethernet_tdp, [gpio_clr]
+      blcc wait_halfbit_time
+
+      add i, #1
+      cmp i, #8
+      ble bit_loop
+
+    cmp buf, buf_end
+    blt byte_loop
 
   // Each packet needs to end with a "TP_IDL" (a positive pulse of
   // about 3 bit-times, followed by an idle period).
-  str gpio_stamp, [gpio_set]
+  str pin_ethernet_tdp, [gpio_set]
+  str pin_ethernet_tdm, [gpio_clr]
   bl wait_halfbit_time
   bl wait_halfbit_time
   bl wait_halfbit_time
   bl wait_halfbit_time
   bl wait_halfbit_time
   bl wait_halfbit_time
-  str gpio_stamp, [gpio_clr]
+  str pin_ethernet_tdp, [gpio_clr]
+  str pin_ethernet_tdm, [gpio_clr]
   bl wait_halfbit_time
   bl wait_halfbit_time
   bl wait_halfbit_time
@@ -63,15 +164,19 @@ transmit_from_prefilled_gpio_set_or_clr:
 normal_link_pulse:
   push {r4, r5, r6, r7, lr}
 
-  mov gpio_stamp, #1
-  lsl gpio_stamp, #20
+  mov pin_ethernet_tdp, #1
+  lsl pin_ethernet_tdp, #20
+  mov pin_ethernet_tdm, #1
+  lsl pin_ethernet_tdm, #21
   ldr gpio_set, =0xFE20001C
   ldr gpio_clr, =0xFE200028
 
-  str gpio_stamp, [gpio_set]
+  str pin_ethernet_tdp, [gpio_set]
+  str pin_ethernet_tdm, [gpio_clr]
   bl wait_halfbit_time
   bl wait_halfbit_time
-  str gpio_stamp, [gpio_clr]
+  str pin_ethernet_tdp, [gpio_clr]
+  str pin_ethernet_tdm, [gpio_clr]
 
   pop {r4, r5, r6, r7, lr}
   bx lr
