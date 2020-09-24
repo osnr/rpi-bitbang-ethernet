@@ -143,7 +143,7 @@ void main(void) {
 
     unsigned char buf[1024];
     // Ethernet preamble
-    buf[0] = 0x00; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
+    buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
     buf[7] = 0xD5; // start frame delimiter
     
     /* struct framehdr* frame = (struct framehdr*) &buf[8]; */
@@ -222,7 +222,7 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(19, 1);
-            unsigned char smallbuf[] = {0x00};
+            unsigned char smallbuf[] = {0x55};
             transmit(smallbuf, &smallbuf[1]);
             gpio_set_value(19, 0);
         } else {

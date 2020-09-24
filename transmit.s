@@ -111,9 +111,9 @@ transmit:
 
   byte_loop:
     ldrb byte, [buf], #1
-    mov i, #1
+    mov i, #0
     bit_loop:
-      lsrs byte, i
+      lsrs byte, #1
 
       // bit = 1: LOW -> HIGH
       strcs pin_ethernet_tdm, [gpio_set]
@@ -133,7 +133,7 @@ transmit:
 
       add i, #1
       cmp i, #8
-      ble bit_loop
+      blt bit_loop
 
     cmp buf, buf_end
     blt byte_loop
