@@ -222,8 +222,7 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(19, 1);
-            unsigned char smallbuf[] = {0x55};
-            transmit(smallbuf, &smallbuf[1]);
+            transmit(buf, buf_end);
             gpio_set_value(19, 0);
         } else {
             normal_link_pulse();
