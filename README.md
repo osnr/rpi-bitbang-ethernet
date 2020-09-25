@@ -22,6 +22,9 @@ than using the actual Ethernet controller on the Pi, which [requires a
 full USB
 stack](https://www.raspberrypi.org/forums/viewtopic.php?t=36044) :-/
 
+This project is more of a byproduct of me trying to understand
+Ethernet than a project that's meant to actually be used :-)
+
 ## how to use
 
 _Warning_: This is pretty sketchy and out of spec for Ethernet, so
@@ -104,11 +107,26 @@ program. Also make sure that you connect all the JTAG wires to the
 [alt4 JTAG pins](https://pinout.xyz/pinout/jtag) on the Pi; I wasted a
 lot of time because I had wires connected to a mix of alt4 and alt5.
 
+## other projects
+
+- (video hackday)
+
+- fpga4fun
+
+- igor-plug
+
+The Pi is fast enough and big enough that we can write mostly in C and
+have proper structs for all the network headers, which opens up the
+possibility of.
+
 ## ideas
 
 Internet!
 
-Receive packets!
+Receive packets! You need to do more physical analog stuff to make it
+safe, but I don't think the digital part would be too bad, since the
+Pi is so much faster than the 10BASE-T clock? You could just sit on
+the wire and sample really fast.
 
 TCP!
 

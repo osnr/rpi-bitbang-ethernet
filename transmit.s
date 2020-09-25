@@ -1,8 +1,8 @@
-  buf .req r0
-  buf_end .req r1
+  set_clr_pins_buf .req r0
+  set_clr_pins_buf_end .req r1
 
-  byte .req r2
-  i .req r3
+  set_pins .req r2
+  clr_pins .req r3
 
   pin_ethernet_tdp .req r4
   pin_ethernet_tdm .req r5
@@ -22,8 +22,8 @@ wait_halfbit_time:
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   bx lr
 
-  .globl transmit
-transmit:
+  .globl transmit_from_set_clr_pins_buf
+transmit_from_set_clr_pins_buf:
   push {r4, r5, r6, r7, lr}
 
   mov pin_ethernet_tdp, #1
@@ -33,34 +33,17 @@ transmit:
   ldr gpio_set, =0xFE20001C
   ldr gpio_clr, =0xFE200028
 
-  byte_loop:
-    ldrb byte, [buf], #1
-    mov i, #0
-    bit_loop:
-      lsrs byte, #1
+  halfbit_loop:
+    ldr set_pins, [set_clr_pins_buf], #4
+    ldr clr_pins, [set_clr_pins_buf], #4
 
-      // bit = 1: LOW -> HIGH
-      strcs pin_ethernet_tdm, [gpio_set]
-      strcs pin_ethernet_tdp, [gpio_clr]
-      blcs wait_halfbit_time
-      strcs pin_ethernet_tdp, [gpio_set]
-      strcs pin_ethernet_tdm, [gpio_clr]
-      blcs wait_halfbit_time
+    str set_pins, [gpio_set]
+    str clr_pins, [gpio_clr]
 
-      // bit = 0: HIGH -> LOW
-      strcc pin_ethernet_tdp, [gpio_set]
-      strcc pin_ethernet_tdm, [gpio_clr]
-      blcc wait_halfbit_time
-      strcc pin_ethernet_tdm, [gpio_set]
-      strcc pin_ethernet_tdp, [gpio_clr]
-      blcc wait_halfbit_time
+    bl wait_halfbit_time
 
-      add i, #1
-      cmp i, #8
-      blt bit_loop
-
-    cmp buf, buf_end
-    blt byte_loop
+    cmp set_clr_pins_buf, set_clr_pins_buf_end
+    blt halfbit_loop
 
   // Each packet needs to end with a "TP_IDL" (a positive pulse of
   // about 3 bit-times, followed by an idle period).

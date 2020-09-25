@@ -14,8 +14,8 @@ void gpio_set_value(int pin, int value) {
     else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
 }
 
-#define GPIO_PIN_ETHERNET_TDp  20
-#define GPIO_PIN_ETHERNET_TDm  21
+#define PIN_ETHERNET_TDp  20
+#define PIN_ETHERNET_TDm  21
 
 struct ethhdr {
     unsigned char dmac[6];
@@ -61,10 +61,33 @@ short ip_checksum(struct iphdr* iphdr);
 unsigned int crc32b(unsigned char *message, int messagelen);
 
 extern void wait(int n);
-extern void transmit(unsigned char* buf, unsigned char* buf_end);
+extern void transmit_from_set_clr_pins_buf(unsigned int* set_clr_pins_buf, unsigned int* set_clr_pins_buf_end);
 extern void normal_link_pulse(void);
 
-/* void transmit(unsigned char* buf, int buflen) { */
+void transmit(unsigned char* buf, int buflen) {
+    unsigned int set_clr_pins_buf[(buflen * 8) * 2 * 2];
+    int k = 0;
+    for (int i = 0; i < buflen; i++) {
+        for (int j = 0; j < 8; j++) {
+            int bit = (buf[i] >> j) & 1;
+            if (bit) { // LOW => HIGH
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+
+            } else { // HIGH => LOW
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+            }
+        }
+    }
+    if (k != (buflen * 8) * 2 * 2) { for(;;); }
+    transmit_from_set_clr_pins_buf(set_clr_pins_buf, &set_clr_pins_buf[k]);
 /*     unsigned int gpio_set_or_clrs[(buflen * 8) * 2]; */
 /*     for (int i = 0; i < buflen; i++) { */
 /*         for (int j = 0; j < 8; j++) { */
@@ -82,6 +105,7 @@ extern void normal_link_pulse(void);
 /*     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2); */
 /*     gpio_set_value(19, 0); */
 /* } */
+}
 
 void enable_mmu(void) {
 // from https://www.raspberrypi.org/forums/viewtopic.php?t=65922
@@ -204,14 +228,14 @@ void main(void) {
     
     buf_end += sizeof(*frametlr);
 
-    gpio_set_as_output(GPIO_PIN_ETHERNET_TDp);
-    gpio_set_as_output(GPIO_PIN_ETHERNET_TDm);
+    gpio_set_as_output(PIN_ETHERNET_TDp);
+    gpio_set_as_output(PIN_ETHERNET_TDm);
 
     gpio_set_as_output(42);
     gpio_set_as_output(19);
 
-    gpio_set_value(GPIO_PIN_ETHERNET_TDp, 0);
-    gpio_set_value(GPIO_PIN_ETHERNET_TDm, 0);
+    gpio_set_value(PIN_ETHERNET_TDp, 0);
+    gpio_set_value(PIN_ETHERNET_TDm, 0);
 
     int v = 0;
 
@@ -222,7 +246,7 @@ void main(void) {
         if (++nlps_sent % 125 == 0) {
             gpio_set_value(42, (v = !v));
             gpio_set_value(19, 1);
-            transmit(buf, buf_end);
+            transmit(buf, buf_end - buf);
             gpio_set_value(19, 0);
         } else {
             normal_link_pulse();
