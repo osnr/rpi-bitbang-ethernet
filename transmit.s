@@ -19,7 +19,7 @@ wait_halfbit_time:
   // this should take 50 nanoseconds (with MMU, caches, etc on)
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
-  nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
+  nop; nop; nop; nop; nop; nop; nop; nop
   bx lr
 
   .globl transmit_from_set_clr_pins_buf
