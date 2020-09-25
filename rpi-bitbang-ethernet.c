@@ -86,25 +86,7 @@ void transmit(unsigned char* buf, int buflen) {
             }
         }
     }
-    if (k != (buflen * 8) * 2 * 2) { for(;;); }
     transmit_from_set_clr_pins_buf(set_clr_pins_buf, &set_clr_pins_buf[k]);
-/*     unsigned int gpio_set_or_clrs[(buflen * 8) * 2]; */
-/*     for (int i = 0; i < buflen; i++) { */
-/*         for (int j = 0; j < 8; j++) { */
-/*             int bit = (buf[i] >> j) & 1; */
-/*             if (bit) { // low then high */
-/*                 gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_CLR0]; */
-/*                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_SET0]; */
-/*             } else { // high then low */
-/*                 gpio_set_or_clrs[(i * 8 + j) * 2] = (unsigned int) &GPIO[GPIO_SET0]; */
-/*                 gpio_set_or_clrs[(i * 8 + j) * 2 + 1] = (unsigned int) &GPIO[GPIO_CLR0]; */
-/*             } */
-/*         } */
-/*     } */
-/*     gpio_set_value(19, 1); */
-/*     transmit_from_prefilled_gpio_set_or_clr(gpio_set_or_clrs, (buflen * 8) * 2); */
-/*     gpio_set_value(19, 0); */
-/* } */
 }
 
 void enable_mmu(void) {
@@ -170,60 +152,50 @@ void main(void) {
     buf[0] = 0x55; buf[1] = 0x55; buf[2] = 0x55; buf[3] = 0x55; buf[4] = 0x55; buf[5] = 0x55; buf[6] = 0x55;
     buf[7] = 0xD5; // start frame delimiter
     
-    /* struct framehdr* frame = (struct framehdr*) &buf[8]; */
-    /* for (int i = 0; i < payload_len; i++) { frame->payload[i] = payload[i]; } */
+    struct framehdr* frame = (struct framehdr*) &buf[8];
+    for (int i = 0; i < payload_len; i++) { frame->payload[i] = payload[i]; }
 
-    /* { */
-    /*     struct ethhdr* ethhdr = &frame->ethhdr; */
-    /*     // (the proper way to do this would be to do an ARP thing to */
-    /*     // online resolve MAC addr from IP addr, instead of */
-    /*     // hard-coding MAC ?) */
-    /*     for (int i = 0; i < 6; i++) ethhdr->dmac[i] = dest_mac[i]; */
+    {
+        struct ethhdr* ethhdr = &frame->ethhdr;
+        // (the proper way to do this would be to do an ARP thing to
+        // online resolve MAC addr from IP addr, instead of
+        // hard-coding MAC ?)
+        for (int i = 0; i < 6; i++) ethhdr->dmac[i] = dest_mac[i];
 
-    /*     unsigned char* s = ethhdr->smac; */
-    /*     // FIXME: ? made-up 'source MAC address' for the Pi. */
-    /*     s[0] = 0x00; s[1] = 0x12; s[2] = 0x34; s[3] = 0x56; s[4] = 0x78; s[5] = 0x90; */
+        unsigned char* s = ethhdr->smac;
+        // FIXME: ? made-up 'source MAC address' for the Pi.
+        s[0] = 0x00; s[1] = 0x12; s[2] = 0x34; s[3] = 0x56; s[4] = 0x78; s[5] = 0x90;
 
-    /*     // ETH_P_IP / 'this Ethernet frame contains an IP datagram' */
-    /*     ethhdr->ethertype = 0x0008; // 0x0800;  */
-    /* } */
-    /* { // see RFC791: https://tools.ietf.org/html/rfc791 */
-    /*   // also see concretely: https://www.fpga4fun.com/10BASE-T2.html */
-    /*     struct iphdr* iphdr = &frame->iphdr; */
-    /*     iphdr->ihl_and_version = 0x45; // version 4, ihl 5 */
-    /*     iphdr->tos = 0x00; // don't care */
-    /*     iphdr->len = sizeof(frame->iphdr) + sizeof(frame->udphdr) + payload_len; iphdr->len = (iphdr->len>>8) | (iphdr->len<<8); */
-    /*     iphdr->id = 0x00; // don't care */
-    /*     iphdr->flags = 0x00; // don't care */
-    /*     iphdr->frag_offset = 0; // this is the only datagram in the fragment (?) */
-    /*     iphdr->ttl = 8; */
-    /*     iphdr->proto = 0x11; // UDP */
-    /*     iphdr->csum = 0; // will fixup later */
-    /*     for (int i = 0; i < 4; i++) iphdr->saddr[i] = source_ip[i]; */
-    /*     for (int i = 0; i < 4; i++) iphdr->daddr[i] = dest_ip[i]; */
-
-    /*     iphdr->csum = ip_checksum(iphdr); */
-    /* } */
-    /* { // see RFC768: https://tools.ietf.org/html/rfc768 */
-    /*     struct udphdr* udphdr = &frame->udphdr; */
-    /*     udphdr->sport = 0x0004; // 1024; */
-    /*     udphdr->dport = 0x0004; // 1024; */
-    /*     udphdr->ulen = sizeof(frame->udphdr) + payload_len; udphdr->ulen = (udphdr->ulen>>8) | (udphdr->ulen<<8); */
-    /*     udphdr->sum = 0; // don't care */
-    /* } */
-    /* unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len; */
-    unsigned char knowngood[] = "\x78\x4f\x43\x88\x3b\xe2\x00\x12\x34\x56\x78\x90\x08\x00\x45\x00"
-        "\x00\x2e\x00\x00\x00\x00\x80\x11\xb7\x3c\xc0\xa8\x01\x2c\xc0\xa8"
-        "\x01\x06\x04\x00\x04\x00\x00\x1a\x00\x00\x00\x01\x02\x03\x04\x05"
-        "\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11";
-    int i;
-    for (i = 0; i < (int) sizeof(knowngood) - 1; i++) {
-        buf[8 + i] = knowngood[i];
+        // ETH_P_IP / 'this Ethernet frame contains an IP datagram'
+        ethhdr->ethertype = 0x0008; // 0x0800;
     }
-    unsigned char *buf_end = &buf[8 + i];
-    struct frame* frame = (struct frame*) &buf[8];
-    struct frametlr* frametlr = (struct frametlr*) buf_end;
+    { // see RFC791: https://tools.ietf.org/html/rfc791
+      // also see concretely: https://www.fpga4fun.com/10BASE-T2.html
+        struct iphdr* iphdr = &frame->iphdr;
+        iphdr->ihl_and_version = 0x45; // version 4, ihl 5
+        iphdr->tos = 0x00; // don't care
+        iphdr->len = sizeof(frame->iphdr) + sizeof(frame->udphdr) + payload_len; iphdr->len = (iphdr->len>>8) | (iphdr->len<<8);
+        iphdr->id = 0x00; // don't care
+        iphdr->flags = 0x00; // don't care
+        iphdr->frag_offset = 0; // this is the only datagram in the fragment (?)
+        iphdr->ttl = 8;
+        iphdr->proto = 0x11; // UDP
+        iphdr->csum = 0; // will fixup later
+        for (int i = 0; i < 4; i++) iphdr->saddr[i] = source_ip[i];
+        for (int i = 0; i < 4; i++) iphdr->daddr[i] = dest_ip[i];
 
+        iphdr->csum = ip_checksum(iphdr);
+    }
+    { // see RFC768: https://tools.ietf.org/html/rfc768
+        struct udphdr* udphdr = &frame->udphdr;
+        udphdr->sport = 0x0004; // 1024;
+        udphdr->dport = 0x0004; // 1024;
+        udphdr->ulen = sizeof(frame->udphdr) + payload_len; udphdr->ulen = (udphdr->ulen>>8) | (udphdr->ulen<<8);
+        udphdr->sum = 0; // don't care
+    }
+    unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
+    
+    struct frametlr* frametlr = (struct frametlr*) buf_end;
     frametlr->fcs = crc32b((unsigned char*) frame, buf_end - (unsigned char*) frame);
     
     buf_end += sizeof(*frametlr);

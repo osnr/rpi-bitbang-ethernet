@@ -16,7 +16,13 @@ wait:
   bx lr
 
 wait_halfbit_time:
-  // this should take 50 nanoseconds (with MMU, caches, etc on)
+  // the timing here is _really_ finicky. for example, if I add
+  // one NOP, it stops working on my Wi-Fi router (Netgear R7000P),
+  // but it still works when plugged into a separate switch or
+  // directly into an Ethernet adapter on my laptop. if I remove one
+  // NOP, it still works on my router, but slightly less reliably?
+
+  // this should take ~50 nanoseconds (with MMU, caches, etc on)
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop; nop; nop
   nop; nop; nop; nop; nop; nop; nop; nop
