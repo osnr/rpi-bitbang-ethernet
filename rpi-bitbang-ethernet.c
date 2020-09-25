@@ -1,19 +1,8 @@
-/* no header files :-D */
+#include "util.h"
+#include "checksums.h"
 
-#define GPIO_BASE   0xFE200000
-#define GPIO_SET0   7
-#define GPIO_CLR0   10
-
-static volatile unsigned int* volatile GPIO = (volatile unsigned int*) GPIO_BASE;
-void gpio_set_as_output(int pin) {
-    GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
-    GPIO[pin/10] |= 1 << (3 * (pin % 10));
-}
-void gpio_set_value(int pin, int value) {
-    if (value) { GPIO[GPIO_SET0 + pin/32] = 1 << (pin % 32); }
-    else { GPIO[GPIO_CLR0 + pin/32] = 1 << (pin % 32); }
-}
-
+// note that these are also defined in a few places in transmit.s;
+// make sure you change all sites.
 #define PIN_ETHERNET_TDp  20
 #define PIN_ETHERNET_TDm  21
 
@@ -57,79 +46,36 @@ struct frametlr {
     unsigned int fcs;
 } __attribute__((packed));
 
-short ip_checksum(struct iphdr* iphdr);
-unsigned int crc32b(unsigned char *message, int messagelen);
+struct set_clr_pins { unsigned int set_pins; unsigned int clr_pins; };
 
 extern void wait(int n);
-extern void transmit_from_set_clr_pins_buf(unsigned int* set_clr_pins_buf, unsigned int* set_clr_pins_buf_end);
+extern void transmit_from_set_clr_pins_buf(struct set_clr_pins* set_clr_pins_buf,
+                                           struct set_clr_pins* set_clr_pins_buf_end);
 extern void normal_link_pulse(void);
 
 void transmit(unsigned char* buf, int buflen) {
-    unsigned int set_clr_pins_buf[(buflen * 8) * 2 * 2];
+    struct set_clr_pins set_clr_pins_buf[(buflen * 8) * 2];
     int k = 0;
     for (int i = 0; i < buflen; i++) {
         for (int j = 0; j < 8; j++) {
             int bit = (buf[i] >> j) & 1;
             if (bit) { // LOW => HIGH
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
 
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
 
             } else { // HIGH => LOW
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
 
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDm;
-                set_clr_pins_buf[k++] = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
             }
         }
     }
     transmit_from_set_clr_pins_buf(set_clr_pins_buf, &set_clr_pins_buf[k]);
-}
-
-void enable_mmu(void) {
-// from https://www.raspberrypi.org/forums/viewtopic.php?t=65922
-  static volatile __attribute__ ((aligned (0x4000))) unsigned PageTable[4096];
-
-  unsigned base;
-  for (base = 0; base < 512; base++)
-  {
-    // outer and inner write back, write allocate, shareable
-    PageTable[base] = base << 20 | 0x1140E;
-  }
-  for (; base < 4096; base++)
-  {
-    // shared device, never execute
-    PageTable[base] = base << 20 | 0x10416;
-  }
-
-  // restrict cache size to 16K (no page coloring)
-  unsigned auxctrl;
-  __asm__ volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
-  auxctrl |= 1 << 6;
-  __asm__ volatile ("mcr p15, 0, %0, c1, c0,  1" :: "r" (auxctrl));
-
-  // set domain 0 to client
-  __asm__ volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (1));
-
-  // always use TTBR0
-  __asm__ volatile ("mcr p15, 0, %0, c2, c0, 2" :: "r" (0));
-
-  // set TTBR0 (page table walk inner cacheable, outer non-cacheable, shareable memory)
-  __asm__ volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (3 | (unsigned) &PageTable));
-
-  // invalidate data cache and flush prefetch buffer
-  /* __asm__ volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory"); */
-  /* __asm__ volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory"); */
-
-  // enable MMU, L1 cache and instruction cache, L2 cache, write buffer,
-  //   branch prediction and extended page table on
-  unsigned mode;
-  __asm__ volatile ("mrc p15,0,%0,c1,c0,0" : "=r" (mode));
-  mode |= 0x0480180D;
-  __asm__ volatile ("mcr p15,0,%0,c1,c0,0" :: "r" (mode) : "memory");
 }
 
 void main(void) {
@@ -226,49 +172,4 @@ void main(void) {
 
         // see https://www.fpga4fun.com/10BASE-T3.html
     }
-    
-}
-
-short ip_checksum(struct iphdr* iphdr) {
-    unsigned short* addr = (unsigned short*) iphdr;
-    int count = sizeof(*iphdr);
-    // from https://tools.ietf.org/html/rfc1071
-    /* Compute Internet Checksum for "count" bytes
-     *         beginning at location "addr".
-     */
-    register long sum = 0;
-
-    while( count > 1 )  {
-        /*  This is the inner loop */
-        sum += * addr++;
-        count -= 2;
-    }
-
-    /*  Add left-over byte, if any */
-    if( count > 0 )
-        sum += * (unsigned char *) addr;
-
-    /*  Fold 32-bit sum to 16 bits */
-    while (sum>>16)
-        sum = (sum & 0xffff) + (sum >> 16);
-
-    return ~sum;
-}
-
-unsigned int crc32b(unsigned char *message, int messagelen) {
-   int i, j;
-   unsigned int byte, crc, mask;
-
-   i = 0;
-   crc = 0xFFFFFFFF;
-   while (i < messagelen) {
-      byte = message[i];            // Get next byte.
-      crc = crc ^ byte;
-      for (j = 7; j >= 0; j--) {    // Do eight times.
-         mask = -(crc & 1);
-         crc = (crc >> 1) ^ (0xEDB88320 & mask);
-      }
-      i = i + 1;
-   }
-   return ~crc;
 }
