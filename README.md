@@ -5,9 +5,12 @@ actually [not that
 complicated](https://www.fpga4fun.com/10BASE-T.html).
 
 After seeing how little code it is on an FPGA, I wanted to reimplement
-it in C to understand it better and maybe prototype further ideas. (I
-am capable of thinking in C but not in Verilog yet.) The Pi 4 should
-be [fast enough](https://github.com/hzeller/rpi-gpio-dma-demo) to
+it in C to understand it better and maybe prototype further
+ideas. (I'm capable of thinking in C but not yet in Verilog. And that
+fpga4fun example is pretty dense; reading it doesn't tell you much
+about the protocols. Other examples online are mostly assembly for
+constrained microcontrollers and so equally dense.) The Pi 4 should be
+[fast enough](https://github.com/hzeller/rpi-gpio-dma-demo) to
 bit-bang Ethernet comfortably (far above 20MHz), unlike your average
 microcontroller.
 
@@ -130,8 +133,7 @@ the wire and sample really fast.
 
 TCP!
 
-Cleaner code!
-
 I think it would be cool to make a radically small OS with graphics,
-networking, etc, where you just dedicate a core to each of them and
-have it bit-bang. No complicated peripheral setup code.
+networking, etc, where you just dedicate a core to bit-bang each of
+them. All the parts of computing that are interesting and fun without
+any of the boring and complicated peripheral setup code.

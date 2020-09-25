@@ -1,9 +1,9 @@
 #ifndef CHECKSUMS_H
 #define CHECKSUMS_H
 
-short ip_checksum(struct iphdr* iphdr) {
+struct iphdr;
+short ip_checksum(struct iphdr* iphdr, int count) {
     unsigned short* addr = (unsigned short*) iphdr;
-    int count = sizeof(*iphdr);
     // from https://tools.ietf.org/html/rfc1071
     /* Compute Internet Checksum for "count" bytes
      *         beginning at location "addr".

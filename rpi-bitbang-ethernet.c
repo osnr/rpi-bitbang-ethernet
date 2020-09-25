@@ -1,11 +1,19 @@
 #include "util.h"
 #include "checksums.h"
 
-// note that these are also defined in a few places in transmit.s;
-// make sure you change all sites.
 #define PIN_ETHERNET_TDp  20
 #define PIN_ETHERNET_TDm  21
 
+#define PIN_ACT_LED 42
+
+// Warning: Any 2- and 4-byte fields in these headers are expected to
+// be filled as big-endian by the time you send the packet, while
+// (unless you're doing some really weird stuff) the Raspberry Pi's
+// ARM CPU is little-endian.
+
+// It would probably be better to make explicit, compiler-checkable BE
+// struct types & helper functions, but right now, I just hack around
+// it by flipping bytes after assignment in main() where needed...
 struct ethhdr {
     unsigned char dmac[6];
     unsigned char smac[6];
@@ -49,13 +57,35 @@ struct frametlr {
 struct set_clr_pins { unsigned int set_pins; unsigned int clr_pins; };
 
 extern void wait(int n);
-extern void transmit_from_set_clr_pins_buf(struct set_clr_pins* set_clr_pins_buf,
+extern void transmit_from_set_clr_pins_buf(unsigned int target_pin_ethernet_tdp,
+                                           unsigned int target_pin_ethernet_tdm,
+                                           struct set_clr_pins* set_clr_pins_buf,
                                            struct set_clr_pins* set_clr_pins_buf_end);
-extern void normal_link_pulse(void);
+extern void normal_link_pulse(unsigned int target_pin_ethernet_tdp,
+                              unsigned int target_pin_ethernet_tdm);
 
 void transmit(unsigned char* buf, int buflen) {
+    // A sequence where each item in the sequence says 'set these pins
+    // set_pins and clear these pins clr_pins'.
     struct set_clr_pins set_clr_pins_buf[(buflen * 8) * 2];
+    
+    // Each item in the sequence will be enacted and held for a
+    // half-bit-time. So the assembly-language transmission routine
+    // that we call won't know anything about Manchester encoding;
+    // it'll just go through each item in the sequence, follow our
+    // precomputed instructions of what pins to assign what values,
+    // then wait, then assign the next set of pins according to the
+    // next item in the sequence, and so on. The encoding is all done
+    // ahead of time in this C function.
+
+    // I wonder if you could just emit machine code directly here...
+    // (that's what the AVR one does, although he does the compilation
+    // offline: https://github.com/cnlohr/ethertiny/tree/master/t85)
+
     int k = 0;
+    // Go through each bit in buf & turn it into 2 items in the
+    // sequence (the two half-bits of the 10BASE-T Manchester
+    // encoding)
     for (int i = 0; i < buflen; i++) {
         for (int j = 0; j < 8; j++) {
             int bit = (buf[i] >> j) & 1;
@@ -73,22 +103,29 @@ void transmit(unsigned char* buf, int buflen) {
                 set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
                 set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
             }
+
+            // (By the way, it actually works... sometimes... if you
+            // just leave TD- at 0 and only toggle TD+. I was doing
+            // that for a while. I found that my laptop with USB
+            // Ethernet adapter accepted packets sent this way, and my
+            // external Ethernet switch did too, but my Wi-Fi router
+            // did not. Better to follow the spec as closely as we can
+            // [...not very])
         }
     }
-    transmit_from_set_clr_pins_buf(set_clr_pins_buf, &set_clr_pins_buf[k]);
+
+    transmit_from_set_clr_pins_buf((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm),
+                                   set_clr_pins_buf, &set_clr_pins_buf[k]);
 }
 
 void main(void) {
     enable_mmu();
 
     const unsigned char source_ip[] = {192, 168, 1, 44};
-    /* const unsigned char source_ip[] = {169, 254, 60, 4};*/
 
     // destination set to my laptop's MAC and IP address; you should change this for yours.
     const unsigned char dest_ip[] = {192, 168, 1, 6};
-    /* const unsigned char dest_ip[] = {169, 254, 60, 3}; */
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
-    /* const unsigned int dest_mac[] = {0x70, 0x88, 0x6B, 0x89, 0x61, 0x11}; */
 
     char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
     int payload_len = 87;
@@ -103,8 +140,8 @@ void main(void) {
 
     {
         struct ethhdr* ethhdr = &frame->ethhdr;
-        // (the proper way to do this would be to do an ARP thing to
-        // online resolve MAC addr from IP addr, instead of
+        // (the proper Internet-y way to do this would be to do an ARP
+        // thing to online resolve MAC addr from IP addr, instead of
         // hard-coding MAC ?)
         for (int i = 0; i < 6; i++) ethhdr->dmac[i] = dest_mac[i];
 
@@ -130,12 +167,12 @@ void main(void) {
         for (int i = 0; i < 4; i++) iphdr->saddr[i] = source_ip[i];
         for (int i = 0; i < 4; i++) iphdr->daddr[i] = dest_ip[i];
 
-        iphdr->csum = ip_checksum(iphdr);
+        iphdr->csum = ip_checksum(iphdr, sizeof(*iphdr));
     }
     { // see RFC768: https://tools.ietf.org/html/rfc768
         struct udphdr* udphdr = &frame->udphdr;
-        udphdr->sport = 0x0004; // 1024;
-        udphdr->dport = 0x0004; // 1024;
+        udphdr->sport = 1024; udphdr->sport = (udphdr->sport>>8) | (udphdr->sport<<8);
+        udphdr->dport = 1024; udphdr->dport = (udphdr->dport>>8) | (udphdr->dport<<8);
         udphdr->ulen = sizeof(frame->udphdr) + payload_len; udphdr->ulen = (udphdr->ulen>>8) | (udphdr->ulen<<8);
         udphdr->sum = 0; // don't care
     }
@@ -149,8 +186,7 @@ void main(void) {
     gpio_set_as_output(PIN_ETHERNET_TDp);
     gpio_set_as_output(PIN_ETHERNET_TDm);
 
-    gpio_set_as_output(42);
-    gpio_set_as_output(19);
+    gpio_set_as_output(PIN_ACT_LED); // green LED just so you can see when it sends
 
     gpio_set_value(PIN_ETHERNET_TDp, 0);
     gpio_set_value(PIN_ETHERNET_TDm, 0);
@@ -161,13 +197,22 @@ void main(void) {
     for (;;) {
         wait(75000 * 70); // ~16ms
 
-        if (++nlps_sent % 125 == 0) {
-            gpio_set_value(42, (v = !v));
-            gpio_set_value(19, 1);
+        if (++nlps_sent % 125 == 0) { // send packet ~every 2 seconds
+            gpio_set_value(PIN_ACT_LED, (v = !v));
             transmit(buf, buf_end - buf);
-            gpio_set_value(19, 0);
+
         } else {
-            normal_link_pulse();
+            normal_link_pulse((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm));
+
+            // Once the Normal Link Pulse is working, the little light
+            // on your switch/router should at least light up for the
+            // Ethernet port that the Pi is connected to.
+
+            // If you're watching in Wireshark and the Pi is plugged
+            // straight into your computer or something, you should
+            // also see a patter of ARP and other weird discovery
+            // packets as your computer sees that there's something
+            // there.
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
