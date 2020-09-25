@@ -64,64 +64,24 @@ extern void transmit_from_set_clr_pins_buf(unsigned int target_pin_ethernet_tdp,
 extern void normal_link_pulse(unsigned int target_pin_ethernet_tdp,
                               unsigned int target_pin_ethernet_tdm);
 
-void transmit(unsigned char* buf, int buflen) {
-    // A sequence where each item in the sequence says 'set these pins
-    // set_pins and clear these pins clr_pins'.
-    struct set_clr_pins set_clr_pins_buf[(buflen * 8) * 2];
-    
-    // Each item in the sequence will be enacted and held for a
-    // half-bit-time. So the assembly-language transmission routine
-    // that we call won't know anything about Manchester encoding;
-    // it'll just go through each item in the sequence, follow our
-    // precomputed instructions of what pins to assign what values,
-    // then wait, then assign the next set of pins according to the
-    // next item in the sequence, and so on. The encoding is all done
-    // ahead of time in this C function.
-
-    // I wonder if you could just emit machine code directly here...
-    // (that's what the AVR one does, although he does the compilation
-    // offline: https://github.com/cnlohr/ethertiny/tree/master/t85)
-
-    int k = 0;
-    // Go through each bit in buf & turn it into 2 items in the
-    // sequence (the two half-bits of the 10BASE-T Manchester
-    // encoding)
-    for (int i = 0; i < buflen; i++) {
-        for (int j = 0; j < 8; j++) {
-            int bit = (buf[i] >> j) & 1;
-            if (bit) { // LOW => HIGH
-                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
-                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
-
-                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
-                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
-
-            } else { // HIGH => LOW
-                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
-                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
-
-                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
-                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
-            }
-
-            // (By the way, it actually works... sometimes... if you
-            // just leave TD- at 0 and only toggle TD+. I was doing
-            // that for a while. I found that my laptop with USB
-            // Ethernet adapter accepted packets sent this way, and my
-            // external Ethernet switch did too, but my Wi-Fi router
-            // did not. Better to follow the spec as closely as we can
-            // [...not very])
-        }
-    }
-
-    transmit_from_set_clr_pins_buf((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm),
-                                   set_clr_pins_buf, &set_clr_pins_buf[k]);
-}
+void transmit(unsigned char* buf, int buflen);
 
 void main(void) {
+    // I was hoping I wouldn't need this, but it turned out to be
+    // pretty necessary. This utility function sets up the MMU and
+    // enables the instruction and data caches, which makes everything
+    // about 70x faster, which is fast enough that we can get OK
+    // timing to bit-bang Ethernet (30 NOPs ~= 50 nanoseconds; without
+    // this stuff, just 1-2 instructions take 50 ns, so the timing is
+    // totally unreliable and asymmetrical...)
     enable_mmu();
+    // I think we could probably get even faster and more reliable
+    // (~2x?) if we configured the clock speed? I didn't look into that.
+    // see this thread: https://www.raspberrypi.org/forums/viewtopic.php?t=219212
+    // & this project: https://github.com/hzeller/rpi-gpio-dma-demo
+    // (that runs on Linux where all the perf stuff is already enabled)
 
-    const unsigned char source_ip[] = {192, 168, 1, 44};
+    const unsigned char source_ip[] = {192, 168, 1, 44}; // I made this up! change it!
 
     // destination set to my laptop's MAC and IP address; you should change this for yours.
     const unsigned char dest_ip[] = {192, 168, 1, 6};
@@ -204,17 +164,71 @@ void main(void) {
         } else {
             normal_link_pulse((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm));
 
-            // Once the Normal Link Pulse is working, the little light
-            // on your switch/router should at least light up for the
-            // Ethernet port that the Pi is connected to.
+            // Once the Normal Link Pulse is working, the little
+            // status LED on your switch/router should at least light
+            // up for the Ethernet port that the Pi is connected to.
 
             // If you're watching in Wireshark and the Pi is plugged
             // straight into your computer or something, you should
-            // also see a patter of ARP and other weird discovery
-            // packets as your computer sees that there's something
-            // there.
+            // also see the network interface go from silence to a
+            // patter of ARP / other weird discovery packets as your
+            // computer sees that there's something there.
         }
 
         // see https://www.fpga4fun.com/10BASE-T3.html
     }
+}
+
+void transmit(unsigned char* buf, int buflen) {
+    // A sequence where each item in the sequence says 'set these pins
+    // set_pins and clear these pins clr_pins'.
+    struct set_clr_pins set_clr_pins_buf[(buflen * 8) * 2];
+    
+    // Each item in the sequence will be enacted and held for a
+    // half-bit-time. So the assembly-language transmission routine
+    // that we call won't know anything about Manchester encoding;
+    // it'll just go through each item in the sequence, follow our
+    // precomputed instructions of what pins to assign what values,
+    // then wait, then assign the next set of pins according to the
+    // next item in the sequence, and so on. The encoding is all done
+    // ahead of time in this C function.
+
+    // I wonder if you could just emit machine code directly here...
+    // (that's what the AVR one does, although he does the compilation
+    // offline: https://github.com/cnlohr/ethertiny/tree/master/t85)
+
+    int k = 0;
+    // Go through each bit in buf & turn it into 2 items in the
+    // sequence (the two half-bits of the 10BASE-T Manchester
+    // encoding)
+    for (int i = 0; i < buflen; i++) {
+        for (int j = 0; j < 8; j++) {
+            int bit = (buf[i] >> j) & 1;
+            if (bit) { // LOW => HIGH
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
+
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
+
+            } else { // HIGH => LOW
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDp;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDm;
+
+                set_clr_pins_buf[k].set_pins = 1 << PIN_ETHERNET_TDm;
+                set_clr_pins_buf[k++].clr_pins = 1 << PIN_ETHERNET_TDp;
+            }
+
+            // (By the way, it actually works... sometimes... if you
+            // just leave TD- at 0 and only toggle TD+. I was doing
+            // that for a while. I found that my laptop with USB
+            // Ethernet adapter accepted packets sent this way, and my
+            // external Ethernet switch did too, but my Wi-Fi router
+            // did not. Better to follow the spec as closely as we can
+            // [...not very])
+        }
+    }
+
+    transmit_from_set_clr_pins_buf((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm),
+                                   set_clr_pins_buf, &set_clr_pins_buf[k]);
 }

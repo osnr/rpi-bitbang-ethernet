@@ -5,18 +5,21 @@ actually [not that
 complicated](https://www.fpga4fun.com/10BASE-T.html).
 
 After seeing how little code it is on an FPGA, I wanted to reimplement
-it in C to understand it better and maybe prototype further
-ideas. (I'm capable of thinking in C but not yet in Verilog. And that
-fpga4fun example is pretty dense; reading it doesn't tell you much
+it in C to understand it better / maybe prototype further ideas. (I'm
+capable of thinking in C but not in Verilog, yet. And that fpga4fun
+example is pretty dense & inlined; reading it doesn't tell you much
 about the protocols. Other examples online are mostly assembly for
-constrained microcontrollers and so equally dense.) The Pi 4 should be
-[fast enough](https://github.com/hzeller/rpi-gpio-dma-demo) to
-bit-bang Ethernet comfortably (far above 20MHz), unlike your average
+constrained platforms and equally dense in their own ways.)
+
+The Pi 4 should be [fast
+enough](https://github.com/hzeller/rpi-gpio-dma-demo) to bit-bang
+Ethernet comfortably (far above 20MHz), unlike your average
 microcontroller.
 
 I don't like doing stuff like this in Linux, and it sort of defeats
 the point of doing it from scratch, and it's even harder to nail the
-timing there, so we'll do it on bare metal. It's more fun, anyway.
+timing if you have interrupts and other processes and a kernel flying
+around, so we'll do it on bare metal. It's more fun, anyway.
 
 It seems clear that this approach, a few hundred lines of C that
 tightly fits the Ethernet/IP/UDP protocols and pokes at some registers
@@ -26,12 +29,19 @@ full USB
 stack](https://www.raspberrypi.org/forums/viewtopic.php?t=36044) :-/
 
 This project is more of a byproduct of me trying to understand
-Ethernet than a project that's meant to actually be used :-)
+Ethernet & that FPGA example rather than a project that's meant to be
+used :-)
 
 ## how to use
 
-_Warning_: This is pretty sketchy and out of spec for Ethernet, so
-you might fry something. Magnetics. Voltage. Power over Ethernet.
+_Warning_: This is pretty sketchy and out of spec for Ethernet, so you
+might fry something. Your Pi, your router, etc. We're sending 3.3V
+logic when they say [you shouldn't go above
+2.8V](https://www.iol.unh.edu/sites/default/files/knowledgebase/ethernet/10basetmau.pdf#page=11). [Magnetics
+stuff](https://networkengineering.stackexchange.com/questions/29927/what-is-the-purpose-of-an-ethernet-magnetic-transformer-and-how-are-they-used)
+isolates the device if you use a real Ethernet jack. (I think you can
+buy a MagJack, though?) In particular, I think you should probably not
+try this with a Power over Ethernet port on the other side.
 
 I've only tested it on the Raspberry Pi 4B with 2GB RAM.
 
@@ -65,7 +75,7 @@ show up on your computer each time!
 
 ## how it works
 
-transmit.s
+You really only need to look at rpi-bitbang-ethernet.c and transmit.s.
 
 ## development
 
@@ -76,16 +86,23 @@ the development process.
 
 ## debugging
 
-If you don't see the packet from `nc`, you should plug the Ethernet
-cable directly into your computer and use Wireshark, so at least the
-Ethernet frames will show up there, even if the content / IP
-addressing is totally wrong for some reason.
+If you don't see the packet from `nc`, you should:
+
+- check if the light on your Ethernet switch for that port turns
+on. if not, even the Normal Link Pulses aren't getting through.
+
+- consider plugging the Ethernet cable directly into your computer and
+using Wireshark, so at least anything resembling an Ethernet frame
+will show up there for analysis, even if some part of it is messed up
+so no one can actually receive it.
 
 (Even if the Ethernet frames don't send at all, Wireshark should show
 a flurry of ARP and MDNS packets and stuff from your computer as soon
-as the Pi starts sending out link test pulses, where your computer is
-trying to figure out what's going on with this newly connected
-network.)
+as the Pi starts sending out reasonable link pulses, where your
+computer is trying to figure out what's going on with this newly
+connected network. )
+
+### jtag
 
 I recommend getting a JTAG dongle (I just used an [FT232R
 dongle](https://jacobncalvert.com/2020/02/04/jtag-on-the-cheap-with-the-ftdi-ft232r/)
@@ -110,17 +127,33 @@ program. Also make sure that you connect all the JTAG wires to the
 [alt4 JTAG pins](https://pinout.xyz/pinout/jtag) on the Pi; I wasted a
 lot of time because I had wires connected to a mix of alt4 and alt5.
 
-## other projects
+## see also
 
-- (video hackday)
+- [ethertiny](https://github.com/cnlohr/ethertiny) (Hackaday post:
+  [Bit-banging Ethernet On An
+  ATTiny85](https://hackaday.com/2014/08/29/bit-banging-ethernet-on-an-attiny85/)
+  has a great video with explanation)
 
-- fpga4fun
+- [fpga4fun.com 10BASE-T FPGA
+  interface](https://www.fpga4fun.com/10BASE-T.html): possibly the
+  best 'hacker's explanation' of Ethernet I found. I only started this
+  project after I realized their thing worked on my network (used an
+  ECP5 FPGA I had lying around), so I had a known-good example -- if
+  you can't get this project working, it might be wise to try theirs
 
-- igor-plug
+- [IgorPlug-UDP](http://web.archive.org/web/20080202054313/https://www.cesko.host.sk/IgorPlugUDP/IgorPlug-UDP%20(AVR)_eng.htm):
+  I didn't really look at this, but it's cited around various places
+  if you look for stuff about bit-banging Ethernet.
 
-The Pi is fast enough and big enough that we can write mostly in C and
-have proper structs for all the network headers, which opens up the
-possibility of.
+- [10Base-T Medium Attachment Unit
+  PDF](https://www.iol.unh.edu/sites/default/files/knowledgebase/ethernet/10basetmau.pdf):
+  very clear explanations of timing, has good diagrams
+
+What's new here: The Pi is fast enough and big enough that we can
+write mostly in C and have proper structs for all the network headers,
+which results in (I think) much clearer and more educational code,
+something you could imagine actually turning into more of a proper (if
+hacky and personal-use-only) network stack.
 
 ## ideas
 
@@ -129,7 +162,7 @@ Internet!
 Receive packets! You need to do more physical analog stuff to make it
 safe, but I don't think the digital part would be too bad, since the
 Pi is so much faster than the 10BASE-T clock? You could just sit on
-the wire and sample really fast.
+the wire and sample really fast until you see a level change.
 
 TCP!
 
