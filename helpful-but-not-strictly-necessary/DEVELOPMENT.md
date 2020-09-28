@@ -13,13 +13,14 @@ supported the Pi 4.
 
 Some weird issues (both trying to bootload the .elf and the raw .bin).
 
-- The .elf got loaded at 0x10000 or something instead of 0x8000,
-so all absolute addresses broke. This meant that the program often
-kinda worked, but references to data segments often got totally mangled, so
-it'd crash if you tried anything complicated. I think you might need
-to build the .elf in some special way to be understood, but eh -- I
-like the symmetry of loading the same .bin file that you could copy to
-the SD card.
+- The .elf got loaded at 0x10000 or something instead of 0x8000, so
+all absolute addresses broke. This meant that the program often kinda
+worked well enough to lure me into a false sense of security, but many
+references (e.g. to data segments) got totally mangled, so it'd crash
+once you tried anything complicated. I think you might need to build
+the .elf in some special way to be understood, but I'm meh on this
+whole approach -- I like the symmetry of loading the same .bin file
+that you would otherwise copy to the SD card.
 
 - The .bin got loaded properly at 0x8000, but the bootloader jumped to
 0x8000+[some weird offset] instead of 0x8000. I got it to work for a
@@ -43,6 +44,16 @@ cable to the proper Ethernet port). I didn't look into that.
 
 ## debugging
 
+There's something very satisfying about debugging this, because you
+build up an inventory of tactics over time, where the tactics can sit
+at vastly different levels of abstraction and rely on completely
+different side effects (signal seen in logic analyzer, console output,
+ACT LED, debugger, network Wireshark output, direct-to-laptop
+Wireshark output, porting to desktop, nc output...). It's like a
+puzzle game where whenever it doesn't work, you're challenged to
+figure out which tactics to apply to diagnose it (or you need to
+invent a new tactic).
+
 If you don't see the packet from `nc`, you should:
 
 - check if the light on your Ethernet switch for that port turns
@@ -53,7 +64,8 @@ show that it's a non-Gigabit connection!)
 - consider plugging the Ethernet cable directly into your computer and
 using Wireshark, so at least anything resembling an Ethernet frame
 will show up there for analysis, even if some part of it is messed up
-so no one can actually receive it.
+so no one can actually receive it. (a router or switch would just
+discard those undeliverables)
 
     (Even if the Ethernet frames don't send at all, Wireshark should show
 a flurry of ARP and MDNS packets and stuff from your computer as soon
@@ -70,11 +82,19 @@ other useful techniques:
   up to that point, so move that line downward. keep doing this until
   you narrow down to the exact point of failure.
 
-- use other GPIO pins to set intervals when things happen + a logic
+- you could add
+  [`uart_putc`](https://gitlab.com/bztsrc/imgrecv/-/blob/master/raspi/imgrecv.c#L77)
+  and `uart_puts`, maybe a `printf` impl from somewhere, and try to
+  print stuff
+
+- use other GPIO pins to signal when events are happening + a logic
   analyzer or oscilloscope. I also used this to compute timing once
-  individual bits were too fast for my logic analyzer: I'd
-  mark the total packet time, measure that, then divide by number of
-  bits to make sure I was in line with the 100 ns/bit standard.
+  individual bits were too fast for my logic analyzer: I'd raise a pin
+  high the whole time I was sending a frame, time that in the logic
+  analyzer (it would be on the order of tens of microseconds, so
+  relatively easy to measure compared to individual bits), then divide
+  by number of bits to make sure I was in line with the 100 ns/bit
+  standard.
 
 - compile rpi-bitbang-ethernet.c for your computer and execute it
   there, especially if you don't want to bother with JTAG. I used to
@@ -88,10 +108,22 @@ other useful techniques:
   pasted it into [Hex Packet Decoder](https://hpd.gasmi.net/) to make
   sure it'd be valid
 
-- slow down timing. my logic analyzer could decode the Manchester
-  encoding after I slowed down the timing enough that it could sample
-  it properly. (then I could copy the decoded bytes out and paste them
-  into Hex Packet Decoder!)
+- slow down timing. my logic analyzer could directly decode the
+  Manchester encoding after I slowed down the timing enough that it
+  could sample it properly. (then I could copy the decoded bytes out
+  and paste them into Hex Packet Decoder!)
+
+- this is probably the Right thing to do, but was my last resort (it
+  sounds less fun than just hacking out the protocol!) and I didn't
+  end up needing to do it: check things against the [FPGA
+  implementation](https://www.fpga4fun.com/10BASE-T0.html). make the
+  timing match up as well as possible and then compare them directly
+  on scope/logic analyzer and iron out the differences as much as
+  possible.
+
+    at the very least, you should make sure you can get that FPGA impl
+  to work! if that doesn't work because your network is picky or
+  something, not much hope for this
 
 ### jtag
 
@@ -124,7 +156,7 @@ whenever you boot-load a new program.
 
 ## tools
 
-You don't _strictly_ need all of these -- which is why they're not
+You don't strictly _need_ all of these -- which is why they're not
 mentioned in the main README -- but it is nice to have some margin for
 error and to be able to see what is going wrong (and what is going
 _right_, which builds confidence in your progress..).
@@ -136,7 +168,7 @@ _right_, which builds confidence in your progress..).
 
 - CP2102 dongle: for bootloader
 
-- a lot of jumpers: to connect to Ethernet
+- a lot of jumpers: to connect to Ethernet cable, debugging dongles, etc
 
 - header: solder onto RUN pin for reset
 
@@ -146,4 +178,6 @@ _right_, which builds confidence in your progress..).
 
 - microSD card reader
 
-- Ethernet-to-USB-C adapter
+- Ethernet adapter for your development computer
+
+- FPGA that runs the fpga4fun demo: I used an [OrangeCrab ECP5 board](https://gregdavill.github.io/OrangeCrab/r0.2/)

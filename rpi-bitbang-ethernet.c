@@ -89,7 +89,7 @@ void main(void) {
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
 
     char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
-    int payload_len = 87;
+    int payload_len; for (payload_len = 0; payload[payload_len] != '\0'; payload_len++);
 
     unsigned char buf[1024];
     // Ethernet preamble

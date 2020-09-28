@@ -30,8 +30,9 @@ gdb:
 deploy: rpi-bitbang-ethernet.bin
 # based on https://yeah.nah.nz/embedded/pi-jtag-u-boot/ 
 # https://git.nah.nz/pi-zero-jtag/tree/load-u-boot.sh
+# I added the `mon reset init`. assumes SRST->Pi's RUN pin
 	arm-none-eabi-gdb -ex 'set confirm off' -ex 'target remote :3333' \
-		-ex 'mon reset init' \ # I added this. assumes SRST->Pi's RUN pin
+		-ex 'mon reset init' \
 		-ex 'mon halt' \
 		-ex 'mon load_image rpi-bitbang-ethernet.bin 0x8000 bin' \
 		-ex 'mon resume 0x8000' \

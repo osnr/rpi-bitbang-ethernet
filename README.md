@@ -7,13 +7,13 @@ try it.
 
 [photo of Pi connected to cut-open Ethernet cable]
 
-After seeing how little code it is on an FPGA, I wanted to reimplement
-it in C to understand it better / maybe prototype more ideas / maybe
-prototype better ways to represent it. (I'm capable of thinking in C
-but not in Verilog, yet. And that fpga4fun example is pretty dense &
-inlined; reading the code doesn't tell you much about the
-protocols. Other examples online are mostly assembly for constrained
-platforms, equally dense in their own ways.)
+In particular, after seeing how little code it is on an FPGA, I wanted
+to reimplement it in C to understand it better / maybe ultimately
+prototype more ideas / prototype better ways to represent it. (I'm
+capable of thinking in C but not in Verilog, yet. And that fpga4fun
+example is pretty dense & inlined; reading the code doesn't tell you
+much about the protocols. Other examples online are mostly assembly
+for constrained platforms, equally dense in their own ways.)
 
 The Raspberry Pi 4 is [fast
 enough](https://github.com/hzeller/rpi-gpio-dma-demo) to bit-bang
@@ -24,20 +24,20 @@ the point of doing it from scratch, and it's even harder to nail the
 timing if you have interrupts and other processes and a kernel flying
 around, so we'll do it on bare metal. It's more fun, anyway.
 
-It seems clear that this approach, a few hundred lines of C that
-tightly fits the Ethernet/IP/UDP protocols and pokes at some registers
-to toggle GPIO pins, is actually less code and more understandable
-than using the actual Ethernet controller on the Pi, which [requires a
-full USB
+It seems clear that this approach, a few hundred lines of C and ARM
+assembly that tightly fits the Ethernet/IP/UDP protocols and pokes at
+some registers to toggle GPIO pins, is actually less total code and
+more understandable than using the actual Ethernet port on the Pi,
+which [requires a full USB
 stack](https://www.raspberrypi.org/forums/viewtopic.php?t=36044) :-/
 
 This project is more of a byproduct of me trying to understand
 Ethernet & that FPGA example rather than a project that's meant to be
-_used_ :-) It also doubles as a simple-ish example of bare-metal
-programming for the Pi 4. I expect I'll use it as a starter template
-for other stuff, and as documentation so my future self can relearn
-how to do these things. (see also
+_used_ :-) It also doubles as a simple-ish template for bare-metal
+programming for the Pi 4. (see also
 [valvers.com](https://www.valvers.com/open-software/raspberry-pi/bare-metal-programming-in-c-part-1/))
+I expect I'll use it as a starter for other stuff and as documentation
+so my future self can relearn how I did these things.
 
 ## how to use
 
@@ -49,13 +49,13 @@ sending 3.3V logic when they say [you shouldn't go above
 2.8V](https://www.iol.unh.edu/sites/default/files/knowledgebase/ethernet/10basetmau.pdf#page=11). [Magnetics
 stuff](https://networkengineering.stackexchange.com/questions/29927/what-is-the-purpose-of-an-ethernet-magnetic-transformer-and-how-are-they-used)
 isolates the device if you use a real Ethernet jack. (I think you can
-buy a MagJack, though?) In particular, I think you should probably not
-do this with a Power over Ethernet port on the other side.
+buy a MagJack, though?) In particular, I think you should not do this
+with a Power over Ethernet port on the other side.
 
 I've only tested this on a single **Raspberry Pi 4B with 2GB RAM**. (I
 don't see why it wouldn't work on other Pi 4B models; it might even be
-workable on the Pi 2 or 3, although you might need to mess a lot with
-the timings there.)
+workable on the Pi 2 or 3, although you'd need to mess a lot with
+the timings there and change all the 0xFE... memory addresses.)
 
 You'll need the [gcc-arm-none-eabi
 toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
@@ -69,15 +69,15 @@ bottom right).
 2. Connect the other end of the cable to your Ethernet switch (or to a
 computer directly -- the link says you should crossover and use pins 3
 and 6 in this case, but I haven't found that to be necessary with
-modern hardware. Pins 1 and 2 seem fine these days).
+modern hardware. Pins 1 and 2 seem fine).
 
 3. Get a microSD card and format it to FAT. Copy the firmware
 [`start4.elf`](https://github.com/raspberrypi/firmware/blob/master/boot/start4.elf)
 to the root of the SD card. (I think this is the
 [only](https://www.raspberrypi.org/documentation/configuration/boot_folder.md)
-file, other than your binary, that you need on the card on the Pi 4
-these days, unless you want to use JTAG or get more RAM or clock speed
-or something.)
+file, other than our binary, that you need on the card on the Pi 4,
+unless you want to use JTAG or get more RAM or clock speed or
+something.)
 
 4. Edit `rpi-bitbang-ethernet.c` and put your computer's IP address and
 MAC address in.
@@ -92,7 +92,7 @@ $ make
 it to `kernel7l.img`.
 
 7. Run `nc -ul 1024` in a terminal on your computer and leave it on;
-the UDP packet from the Pi will show up here.
+the UDP packet from the Pi should show up here after the next step.
 
 8. Put the SD card in your Pi and power it on. The green ACT LED should
 toggle every 2 seconds or so, and you should (usually) see the packet
@@ -121,11 +121,12 @@ MIT
   has a great video with explanation)
 
 - [fpga4fun.com 10BASE-T FPGA
-  interface](https://www.fpga4fun.com/10BASE-T.html): possibly the
-  best 'hacker's explanation' of Ethernet I found. I only started this
+  interface](https://www.fpga4fun.com/10BASE-T.html): the best
+  'hacker's explanation' of Ethernet I found. I only started this
   project after I realized their thing worked on my network (used an
   ECP5 FPGA I had lying around), so I had a known-good example -- if
-  you can't get this project working, it might be wise to try theirs
+  you can't get this project working, it might be wise to check that
+  theirs works
 
 - [IgorPlug-UDP](http://web.archive.org/web/20080202054313/https://www.cesko.host.sk/IgorPlugUDP/IgorPlug-UDP%20(AVR)_eng.htm):
   I didn't really look at this, but it's cited around various places
@@ -159,11 +160,13 @@ don't think the digital part would be too bad, since the Pi is so much
 faster than the 10BASE-T clock? You could just sit on the wire and
 sample really fast and look for level changes.
 
+["Could you make a working DHCP server by soldering wires from a CAT5 cable straight onto an ICE40 FPGA?"](https://twitter.com/lukego/status/1248306300615868419) / ["You can do 100base-TX with a Spartan-6 and a dozen resistors"](https://twitter.com/azonenberg/status/1248308397994151939)
+
 TCP!
 
 I think it would be cool to make a radically small OS with graphics,
-networking, and so on, where you just dedicate a core to bit-bang each
+networking, and so on, where you just dedicate cores to bit-bang each
 of them. All the parts of computing that are interesting and fun
-without any of the boring and arbitrary peripheral setup code; the
+without any of the boring and arbitrary peripheral setup code. the
 essential complexity of protocols instead of the inessential
-complexity of drivers.
+complexity of drivers
