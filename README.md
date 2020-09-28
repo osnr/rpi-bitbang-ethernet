@@ -71,8 +71,13 @@ computer directly -- the link says you should crossover and use pins 3
 and 6 in this case, but I haven't found that to be necessary with
 modern hardware. Pins 1 and 2 seem fine these days).
 
-3. Get a microSD card and format it to FAT. Copy `vendor/start4.elf` to
-the root of the SD card.
+3. Get a microSD card and format it to FAT. Copy the firmware
+[`start4.elf`](https://github.com/raspberrypi/firmware/blob/master/boot/start4.elf)
+to the root of the SD card. (I think this is the
+[only](https://www.raspberrypi.org/documentation/configuration/boot_folder.md)
+file, other than your binary, that you need on the card on the Pi 4
+these days, unless you want to use JTAG or get more RAM or clock speed
+or something.)
 
 4. Edit `rpi-bitbang-ethernet.c` and put your computer's IP address and
 MAC address in.
@@ -102,8 +107,8 @@ You really only need to look at
 [rpi-bitbang-ethernet.c](rpi-bitbang-ethernet.c) and
 [transmit.s](transmit.s).
 
-Also a [writeup on debugging techniques &
-tools](helpful-but-not-strictly-necessary/debugging.md).
+You might find [writeup on development/debugging techniques &
+tools](helpful-but-not-strictly-necessary/DEVELOPMENT.md) interesting.
 
 ## license
 
@@ -111,8 +116,7 @@ MIT
 
 ## see also
 
-- [ethertiny](https://github.com/cnlohr/ethertiny) (Hackaday post:
-  [Bit-banging Ethernet On An
+- [ethertiny](https://github.com/cnlohr/ethertiny) ([Bit-banging Ethernet On An
   ATTiny85](https://hackaday.com/2014/08/29/bit-banging-ethernet-on-an-attiny85/)
   has a great video with explanation)
 
@@ -140,7 +144,7 @@ into a coherent (if hacky and personal-use-only) network stack.
 
 ## ideas
 
-(vague / I am keeping some stuff in my own head for now)
+(vague)
 
 Different packets! Based on GPIO pin input? It is a little sad to just
 send a fixed packet. It feels like I'm betraying the spirit of the
