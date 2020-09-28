@@ -13,9 +13,9 @@
   .globl wait
 wait:
   // this is in assembly because I don't trust different compiler
-  // versions to preserve its performance, and it's important to keep
-  // its exec time the same-ish (at least on the Pi 4B) so that normal
-  // link pulses stay spaced ~16ms apart.
+  // options (and versions!!) to preserve its performance, and it's
+  // important to keep its exec time the same-ish (at least on the Pi
+  // 4B) so that normal link pulses stay spaced ~16ms apart.
   subs r0, #1
   bne wait
   bx lr

@@ -1,7 +1,7 @@
 # rpi-bitbang-ethernet
 
-I recently learned that sending UDP packets by hand over 10BASE-T
-Ethernet is actually [not that
+I recently learned that sending UDP packets over 10BASE-T Ethernet is
+actually [not that
 complicated](https://www.fpga4fun.com/10BASE-T.html), so I wanted to
 try it.
 
@@ -33,10 +33,10 @@ stack](https://www.raspberrypi.org/forums/viewtopic.php?t=36044) :-/
 
 This project is more of a byproduct of me trying to understand
 Ethernet & that FPGA example rather than a project that's meant to be
-used :-)
-
-It also doubles as a reasonably simple example of bare-metal
-programming for the Pi 4. (see also
+_used_ :-) It also doubles as a simple-ish example of bare-metal
+programming for the Pi 4. I expect I'll use it as a starter template
+for other stuff, and as documentation so my future self can relearn
+how to do these things. (see also
 [valvers.com](https://www.valvers.com/open-software/raspberry-pi/bare-metal-programming-in-c-part-1/))
 
 ## how to use
@@ -61,109 +61,53 @@ You'll need the [gcc-arm-none-eabi
 toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
 installed on your computer.
 
-[Cut open an Ethernet cable](https://www.fpga4fun.com/10BASE-T0.html)
+1. [Cut open an Ethernet cable](https://www.fpga4fun.com/10BASE-T0.html)
 (or use a breakout board), and connect pins 1 and 2 of the Ethernet
 cable to [GPIO pins 20 and 21 on the Pi](https://pinout.xyz/) (on the
 bottom right).
 
-Connect the other end of the cable to your Ethernet switch (or to a
+2. Connect the other end of the cable to your Ethernet switch (or to a
 computer directly -- the link says you should crossover and use pins 3
 and 6 in this case, but I haven't found that to be necessary with
 modern hardware. Pins 1 and 2 seem fine these days).
 
-Get a microSD card and format it to FAT. Copy `vendor/start4.elf` to
+3. Get a microSD card and format it to FAT. Copy `vendor/start4.elf` to
 the root of the SD card.
 
-Edit `rpi-bitbang-ethernet.c` and put your computer's IP address and
+4. Edit `rpi-bitbang-ethernet.c` and put your computer's IP address and
 MAC address in.
+
+5. Compile:
 
 ```
 $ make
 ```
 
-Copy `rpi-bitbang-ethernet.bin` to the root of the SD card and rename
+6. Copy `rpi-bitbang-ethernet.bin` to the root of the SD card and rename
 it to `kernel7l.img`.
 
-Run `nc -ul 1024` in a terminal on your computer and leave it on;
+7. Run `nc -ul 1024` in a terminal on your computer and leave it on;
 the UDP packet from the Pi will show up here.
 
-Put the SD card in your Pi and power it on. The green ACT LED should
+8. Put the SD card in your Pi and power it on. The green ACT LED should
 toggle every 2 seconds or so, and you should (usually) see the packet
 show up on your computer each time!
 
+Please do [let me know](https://omar.website) if you actually get this
+to work :-) 
+
 ## how it works
 
-You really only need to look at rpi-bitbang-ethernet.c and transmit.s.
+You really only need to look at
+[rpi-bitbang-ethernet.c](rpi-bitbang-ethernet.c) and
+[transmit.s](transmit.s).
 
-## development
+Also a [writeup on debugging techniques &
+tools](helpful-but-not-strictly-necessary/debugging.md).
 
-I recommend getting a bootloader. I used [imgrecv]() and [raspbootcom]().
+## license
 
-You could bootload over JTAG, I think, but I didn't set JTAG up until
-late in the development process.
-
-## debugging
-
-If you don't see the packet from `nc`, you should:
-
-- check if the light on your Ethernet switch for that port turns
-on. if not, even the Normal Link Pulses aren't getting through.
-
-- consider plugging the Ethernet cable directly into your computer and
-using Wireshark, so at least anything resembling an Ethernet frame
-will show up there for analysis, even if some part of it is messed up
-so no one can actually receive it.
-
-(Even if the Ethernet frames don't send at all, Wireshark should show
-a flurry of ARP and MDNS packets and stuff from your computer as soon
-as the Pi starts sending out reasonable link pulses, where your
-computer is trying to figure out what's going on with this newly
-connected network.)
-
-other useful techniques:
-
-- binary-search debugging
-
-- use other GPIO pins to set intervals when things happen + a logic
-  analyzer or oscilloscope
-
-- compile it on your computer, especially if you don't want to bother
-  with JTAG. this is nice if you're having problems with protocol
-  logic that don't require actual hardware to figure out.
-
-- I often printed out the whole buffer that I wanted to send, then
-  pasted it into [Hex Packet Decoder](https://hpd.gasmi.net/) to make
-  sure it'd be valid
-
-- slow down timing. my logic analyzer could decode the Manchester
-  encoding after I slowed down the timing enough that it could sample
-  it properly. (then I could copy the decoded bytes out and paste them
-  into Hex Packet Decoder!)
-
-### jtag
-
-I recommend getting a JTAG dongle (I just used an [FT232R
-dongle](https://jacobncalvert.com/2020/02/04/jtag-on-the-cheap-with-the-ftdi-ft232r/)
-I had lying around; another Pi acting as a PC & running full-fledged
-Raspberry Pi OS would probably work, too) and using OpenOCD and
-gdb. [This
-tutorial](https://metebalci.com/blog/bare-metal-raspberry-pi-3b-jtag/)
-covers most of it, including the changes you need for the Pi 4B.
-
-[Reports
-vary](https://www.raspberrypi.org/forums/viewtopic.php?t=254142), but
-personally, I found that I needed to connect TDI, TCK, TDO, TMS, and
-the supposedly optional TRST, but I didn't need to connect RTCK. (and
-I couldn't have connected RTCK even if I had needed to, because the
-[ft232r bitbang
-driver](http://www.openocd.org/doc/html/Debug-Adapter-Configuration.html)
-in OpenOCD doesn't seem to support it.)
-
-You also need to put `enable_jtag_gpio=1` in config.txt on the SD
-card, or mess around with the GPIO pin functions manually in the
-program. Also make sure that you connect all the JTAG wires to the
-[alt4 JTAG pins](https://pinout.xyz/pinout/jtag) on the Pi; I wasted a
-lot of time because I had wires connected to a mix of alt4 and alt5.
+MIT
 
 ## see also
 
@@ -196,9 +140,12 @@ into a coherent (if hacky and personal-use-only) network stack.
 
 ## ideas
 
+(vague / I am keeping some stuff in my own head for now)
+
 Different packets! Based on GPIO pin input? It is a little sad to just
 send a fixed packet. It feels like I'm betraying the spirit of the
-programmable computer.
+programmable computer, which is supposed to take input and change over
+time. This thing might as well be a fixed circuit.
 
 Internet!
 

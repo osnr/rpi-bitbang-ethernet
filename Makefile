@@ -15,11 +15,9 @@ clean:
 	rm *.o *.bin *.elf
 
 # You don't really need anything below; it's just for my personal use,
-# so I get a real debugger & don't have to constantly swap SD card in
-# and out.
+# so I have a real debugger & don't have to constantly swap SD card in
+# and out to deploy.
 
-# ft232r.cfg from https://jacobncalvert.com/2020/02/04/jtag-on-the-cheap-with-the-ftdi-ft232r/
-# pi4.cfg based on https://metebalci.com/blog/bare-metal-raspberry-pi-3b-jtag/
 # you should leave this running. it should reconnect even when Pi restarts.
 jtag-attach:
 	openocd -f helpful-but-not-strictly-necessary/ft232r.cfg -f helpful-but-not-strictly-necessary/rpi4.cfg
@@ -33,7 +31,7 @@ deploy: rpi-bitbang-ethernet.bin
 # based on https://yeah.nah.nz/embedded/pi-jtag-u-boot/ 
 # https://git.nah.nz/pi-zero-jtag/tree/load-u-boot.sh
 	arm-none-eabi-gdb -ex 'set confirm off' -ex 'target remote :3333' \
-		-ex 'mon reset init' \
+		-ex 'mon reset init' \ # I added this. assumes SRST->Pi's RUN pin
 		-ex 'mon halt' \
 		-ex 'mon load_image rpi-bitbang-ethernet.bin 0x8000 bin' \
 		-ex 'mon resume 0x8000' \
