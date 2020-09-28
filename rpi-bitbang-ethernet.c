@@ -14,6 +14,7 @@
 // It would probably be better to make explicit, compiler-checkable BE
 // struct types & helper functions, but right now, I just hack around
 // it by flipping bytes after assignment in main() where needed...
+
 struct ethhdr {
     unsigned char dmac[6];
     unsigned char smac[6];

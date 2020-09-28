@@ -13,26 +13,6 @@
 
 .globl _start
 _start:
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  
-
   	@ Return current CPU ID (0..3)
 	mrc p15, 0, r0, c0, c0, 5 			@ r0 = Multiprocessor Affinity Register (MPIDR)
 	ands r0, #3							@ r0 = CPU ID (Bits 0..1)
