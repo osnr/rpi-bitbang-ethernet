@@ -16,6 +16,8 @@
 // it by flipping bytes after assignment in main() where needed...
 
 struct ethhdr {
+    // layer-2 Ethernet header
+    // (doesn't include preamble & SFD)
     unsigned char dmac[6];
     unsigned char smac[6];
     unsigned short ethertype;
@@ -88,7 +90,7 @@ void main(void) {
     const unsigned char dest_ip[] = {192, 168, 1, 6};
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
 
-    char *payload = "Hello! This payload needs to be fairly long to work, so I'm gonna stretch it out a bit\n";
+    char *payload = "hello from Pi!!!\n";
     int payload_len; for (payload_len = 0; payload[payload_len] != '\0'; payload_len++);
 
     unsigned char buf[1024];
@@ -139,6 +141,13 @@ void main(void) {
     }
     unsigned char* buf_end = (unsigned char*) (frame + 1) + payload_len;
     
+    while (buf_end - (unsigned char*) &frame->ethhdr < 60) {
+        // minimum Ethernet frame size (not including the 4-byte FCS
+        // at end) is 60 bytes. if you're under that, you need to
+        // append zeroes to pad
+        *buf_end++ = '\0';
+    }
+
     struct frametlr* frametlr = (struct frametlr*) buf_end;
     frametlr->fcs = crc32b((unsigned char*) frame, buf_end - (unsigned char*) frame);
     
