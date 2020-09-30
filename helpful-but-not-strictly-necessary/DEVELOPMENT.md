@@ -1,6 +1,6 @@
 ## development
 
-## bootloader
+### bootloader
 
 I recommend getting some kind of bootloader setup where you don't need
 to manually copy each build to the SD card.
@@ -42,7 +42,7 @@ which simplifies the wiring as well (one dongle, not two).
 I think you could also netboot (you'd need to run a separate Ethernet
 cable to the proper Ethernet port). I didn't look into that.
 
-## debugging
+### debugging
 
 There's something very satisfying about debugging this, because you
 build up an inventory of tactics over time, where the tactics can sit
@@ -85,7 +85,7 @@ other useful techniques:
 - you could add
   [`uart_putc`](https://gitlab.com/bztsrc/imgrecv/-/blob/master/raspi/imgrecv.c#L77)
   and `uart_puts`, maybe a `printf` impl from somewhere, and try to
-  print stuff
+  print stuff. you need a serial dongle for this
 
 - use other GPIO pins to signal when events are happening + a logic
   analyzer or oscilloscope. I also used this to compute timing once
@@ -125,7 +125,7 @@ other useful techniques:
   to work! if that doesn't work because your network is picky or
   something, not much hope for this
 
-### jtag
+#### jtag
 
 I recommend getting a JTAG dongle (I just used an [FT232R
 dongle](https://jacobncalvert.com/2020/02/04/jtag-on-the-cheap-with-the-ftdi-ft232r/)
@@ -154,7 +154,7 @@ Also solder a header onto the RUN pin on the Pi and connect that to
 SRST if you want to be able to [auto-reset](ft232r.cfg) the Pi
 whenever you boot-load a new program.
 
-## tools
+### tools
 
 You don't strictly _need_ all of these -- which is why they're not
 mentioned in the main README -- but it is nice to have some margin for
