@@ -171,7 +171,7 @@ void main(void) {
             gpio_set_value(PIN_ACT_LED, (v = !v));
             transmit(buf, buf_end - buf);
 
-        } else {
+        } else { // send Normal Link Pulse ~every 16 ms
             normal_link_pulse((1 << PIN_ETHERNET_TDp), (1 << PIN_ETHERNET_TDm));
 
             // Once the Normal Link Pulse is working, the little
