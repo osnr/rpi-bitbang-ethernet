@@ -5,6 +5,7 @@
 #define GPIO_SET0   7
 #define GPIO_CLR0   10
 
+// this is a lot of `volatile`s
 static volatile unsigned int* volatile GPIO = (volatile unsigned int*) GPIO_BASE;
 void gpio_set_as_output(int pin) {
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));

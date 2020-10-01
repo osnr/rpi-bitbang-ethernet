@@ -1,5 +1,9 @@
 all: rpi-bitbang-ethernet.bin
 
+# Q: Why not AArch64?
+# A: No real reason that wouldn't work. I don't know it, and I
+# would've had to find the toolchain to install.
+
 %.o: %.c
 	arm-none-eabi-gcc -g -Wall -Og -std=c99 -fno-omit-frame-pointer -ffreestanding -nostdlib -c $< -o $@
 %.o: %.s

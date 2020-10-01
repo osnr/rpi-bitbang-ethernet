@@ -28,21 +28,23 @@ short ip_checksum(struct iphdr* iphdr, int count) {
 }
 
 unsigned int crc32b(unsigned char *message, int messagelen) {
-   int i, j;
-   unsigned int byte, crc, mask;
+    // from https://stackoverflow.com/questions/21001659/crc32-algorithm-implementation-in-c-without-a-look-up-table-and-with-a-public-li
+    // to compute Ethernet end-of-frame FCS checksum
+    int i, j;
+    unsigned int byte, crc, mask;
 
-   i = 0;
-   crc = 0xFFFFFFFF;
-   while (i < messagelen) {
-      byte = message[i];            // Get next byte.
-      crc = crc ^ byte;
-      for (j = 7; j >= 0; j--) {    // Do eight times.
-         mask = -(crc & 1);
-         crc = (crc >> 1) ^ (0xEDB88320 & mask);
-      }
-      i = i + 1;
-   }
-   return ~crc;
+    i = 0;
+    crc = 0xFFFFFFFF;
+    while (i < messagelen) {
+        byte = message[i];            // Get next byte.
+        crc = crc ^ byte;
+        for (j = 7; j >= 0; j--) {    // Do eight times.
+            mask = -(crc & 1);
+            crc = (crc >> 1) ^ (0xEDB88320 & mask);
+        }
+        i = i + 1;
+    }
+    return ~crc;
 }
 
 #endif

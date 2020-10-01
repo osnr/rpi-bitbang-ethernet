@@ -154,12 +154,12 @@ into a coherent (if hacky and personal-use-only) network stack.
 
 (vague)
 
-Different packets! Based on GPIO pin input? It is a little sad to just
-send a fixed packet. It feels like I'm betraying the spirit of the
-programmable computer, which is supposed to take input and change over
-time. This thing might as well be a fixed circuit.
+Make the packet vary! Based on GPIO pin input? It is a little sad to
+just send a fixed packet. It feels like I'm betraying the spirit of
+the programmable computer, which is supposed to take input and change
+over time. This thing might as well be a fixed circuit.
 
-Internet!
+Internet! Maybe this would just work out of the box?
 
 Receive packets! You might need to do more physical [analog
 stuff](https://www.fpga4fun.com/10BASE-T4.html) to make it work, but I
@@ -167,16 +167,23 @@ don't think the digital part would be too bad, since the Pi is so much
 faster than the 10BASE-T clock? You could just sit on the wire and
 sample really fast and look for level changes.
 
+I wonder if you could run this in Linux by dedicating a core to
+it. Could you get it to interface with the OS and act as a NIC? Might
+be a fun way to learn about driver development.
+
 ["Could you make a working DHCP server by soldering wires from a CAT5 cable straight onto an ICE40 FPGA?"](https://twitter.com/lukego/status/1248306300615868419) / ["You can do 100base-TX with a Spartan-6 and a dozen resistors"](https://twitter.com/azonenberg/status/1248308397994151939)
 
 TCP!
 
+## hmm
+
 I guess there's something that I feel drawn to about using a tiny
 amount of code to interoperate with a giant, complicated, modern
-system, because the system still understands the simple original
-protocol somewhere deep down. I also like the idea of leapfrogging
-what would have had to be custom hardware in the old days using a
-modern CPU.
+system -- because the system still understands the simple original
+protocol somewhere deep down.
+
+I also like the idea of leapfrogging what would have had to be custom
+hardware in the old days using modern tech. 
 
 I think it would be cool to make a radically small OS with graphics,
 networking, and so on, where you just dedicate cores to bit-bang each
