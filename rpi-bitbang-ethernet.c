@@ -1,5 +1,6 @@
 #include "util.h"
 #include "checksums.h"
+// Look, no dependencies!
 
 #define PIN_ETHERNET_TDp  20
 #define PIN_ETHERNET_TDm  21
@@ -77,18 +78,31 @@ void main(void) {
     // timing to bit-bang Ethernet (30 NOPs ~= 50 nanoseconds; without
     // this stuff, just 1-2 instructions take 50 ns, so the timing is
     // totally unreliable and asymmetrical...)
+    // see: https://www.raspberrypi.org/forums/viewtopic.php?t=161885
     enable_mmu();
+
+    // I found that turning on just the icache (which doesn't require
+    // MMU setup) wasn't sufficient (it was ~2x faster than baseline,
+    // but that's not nearly fast enough). Maybe that would work if
+    // you also compiled the Ethernet frame to machine code?
+
     // I think we could probably get even faster and more reliable
-    // (~2x?) if we configured the clock speed? I didn't look into that.
-    // see this thread: https://www.raspberrypi.org/forums/viewtopic.php?t=219212
-    // & this project: https://github.com/hzeller/rpi-gpio-dma-demo
-    // (that runs on Linux where all the perf stuff is already enabled)
+    // (another ~2x?) if we configured the clock speed? I didn't look
+    // into that. see this thread:
+    // https://www.raspberrypi.org/forums/viewtopic.php?t=219212 &
+    // this project: https://github.com/hzeller/rpi-gpio-dma-demo
+    // (that runs on Linux where all the perf stuff is already
+    // enabled)
 
     const unsigned char source_ip[] = {192, 168, 1, 44}; // I made this up! change it!
 
     // destination set to my laptop's MAC and IP address; you should change this for yours.
     const unsigned char dest_ip[] = {192, 168, 1, 6};
     const unsigned int dest_mac[] = {0x78, 0x4F, 0x43, 0x88, 0x3B, 0xE2};
+    // (I tested it, and it works over the Internet, too! Set dest_ip
+    // to any Internet IP -- an EC2 instance, say -- with port 1024
+    // open and `nc -ul 1024` running, and set dest_mac to your
+    // router's IP address!!)
 
     char *payload = "hello from Pi!!!\n";
     int payload_len; for (payload_len = 0; payload[payload_len] != '\0'; payload_len++);
@@ -124,7 +138,8 @@ void main(void) {
         iphdr->id = 0x00; // don't care
         iphdr->flags = 0x00; // don't care
         iphdr->frag_offset = 0; // this is the only datagram in the fragment (?)
-        iphdr->ttl = 8;
+        iphdr->ttl = 128; // sort of arbitrary: https://en.wikipedia.org/wiki/Time_to_live
+                          // (but if it's too low, it'll work locally but not over Internet)
         iphdr->proto = 0x11; // UDP
         iphdr->csum = 0; // will fixup later
         for (int i = 0; i < 4; i++) iphdr->saddr[i] = source_ip[i];

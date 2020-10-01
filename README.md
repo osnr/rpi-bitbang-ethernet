@@ -102,17 +102,23 @@ computer directly -- the link says you should crossover and use pins 3
 and 6 in this case, but I haven't found that to be necessary with
 modern hardware. Pins 1 and 2 seem fine).
 
-    Now you should (usually) see the packet show up on your computer
+   Now you should (usually) see the packet show up on your computer
 each time the green LED toggles! I have Wireshark open here, so you
 can see how the whole Ethernet frame looks:
 
 ![doc/wireshark.gif](doc/wireshark.gif)
 
+   Check out, for instance, how the source MAC address is
+00:12:34:56:78:90, a value I basically made up and [stuck in the
+code](rpi-bitbang-ethernet.c).
+
 ## how it works
 
 You really only need to look at
 [rpi-bitbang-ethernet.c](rpi-bitbang-ethernet.c) and
-[transmit.s](transmit.s).
+[transmit.s](transmit.s). I construct a buffer containing the proper
+Ethernet, IP, and UDP headers and the payload, then toggle the GPIO
+pins with the right timing to transmit it.
 
 You might find [writeup on development/debugging techniques &
 tools](helpful-but-not-strictly-necessary/DEVELOPMENT.md) interesting.
@@ -159,7 +165,8 @@ just send a fixed packet. It feels like I'm betraying the spirit of
 the programmable computer, which is supposed to take input and change
 over time. This thing might as well be a fixed circuit.
 
-Internet! Maybe this would just work out of the box?
+~Internet! Maybe this would just work out of the box?~ it does work!
+it sends fine over Internet :D
 
 Receive packets! You might need to do more physical [analog
 stuff](https://www.fpga4fun.com/10BASE-T4.html) to make it work, but I
@@ -179,11 +186,12 @@ TCP!
 
 I guess there's something that I feel drawn to about using a tiny
 amount of code to interoperate with a giant, complicated, modern
-system -- because the system still understands the simple original
-protocol somewhere deep down.
+system -- because the system still understands the dead simple 1970s
+protocol at heart.
 
 I also like the idea of leapfrogging what would have had to be custom
-hardware in the old days using modern tech. 
+hardware in the old days using the combination of simple code and an
+overkill modern CPU.
 
 I think it would be cool to make a radically small OS with graphics,
 networking, and so on, where you just dedicate cores to bit-bang each
