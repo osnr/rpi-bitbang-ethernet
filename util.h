@@ -18,11 +18,16 @@ void gpio_set_value(int pin, int value) {
 
 void enable_mmu(void) {
     // from https://www.raspberrypi.org/forums/viewtopic.php?t=65922
+    // also see: http://maisonikkoku.com/jaystation2/chapter_05.html
+
     static volatile __attribute__ ((aligned (0x4000))) unsigned PageTable[4096];
 
     unsigned base;
     for (base = 0; base < 512; base++)
         {
+            // http://www.cs.otago.ac.nz/cosc440/readings/Cortex-A.pdf#page=137
+            // you know it's a section translation entry (mapping a 1MB region)
+            // instead of a pointer to 2nd level page table because the LSB is 0.
             // outer and inner write back, write allocate, shareable
             PageTable[base] = base << 20 | 0x1140E;
         }
@@ -48,6 +53,14 @@ void enable_mmu(void) {
     __asm__ volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (3 | (unsigned) &PageTable));
 
     // invalidate data cache and flush prefetch buffer
+    // (this crashes the Pi 4. I don't think we need it, though?
+    // http://classweb.ece.umd.edu/enee447.S2019/baremetal_boot_code_for_ARMv8_A_processors.pdf#page=21
+    // "In ARMv8-A processors and most ARMv7-A processors, you do not
+    // have to do this because hardware automatically invalidates all
+    // cache RAMs after reset")
+    // various places online implement an alternative method for Pi 2/3:
+    // https://github.com/xlar54/PiBASIC/blob/beab4f1b108142e33e6baaeac5b34ea038da6407/src/cache.c#L270
+    // (who came up with that code originally?)
     /* __asm__ volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory"); */
     /* __asm__ volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory"); */
 
