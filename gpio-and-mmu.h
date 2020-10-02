@@ -7,6 +7,10 @@
 
 // this is a lot of `volatile`s
 static volatile unsigned int* volatile GPIO = (volatile unsigned int*) GPIO_BASE;
+// These functions are used for setup and for debug stuff in C, but
+// are not used by the time-sensitive assembly-language transmission
+// routines in transmit.s (which just poke at the GPIO registers
+// directly)
 void gpio_set_as_output(int pin) {
     GPIO[pin/10] &= ~(7 << (3 * (pin % 10)));
     GPIO[pin/10] |= 1 << (3 * (pin % 10));
